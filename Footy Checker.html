@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>Footy Checker — Football Fixtures &amp; Odds Predictor</title>
+
+  <!-- Inter font with clean system-ui fallback -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+          colors: {
+            canvas: '#F6F8FA',
+            surface: '#FFFFFF',
+            hairline: '#E5E9F0',
+            ink: '#111827',
+            secondary: '#6B7280',
+            emeraldPitch: '#059669',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Base editorial defaults & strict mobile overflow protection */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #F6F8FA;
+      color: #111827;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Hide scrollbar cleanly on horizontal quick-select club chips */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Full-screen Startup Pitch Animation Overlay (no skip button, no bottom bar) */
+    #intro-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      height: 100vh;
+      height: 100dvh;
+      background-color: #0b3d24;
+      background-image: repeating-linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.03) 0px,
+        rgba(255, 255, 255, 0.03) 36px,
+        rgba(0, 0, 0, 0.04) 36px,
+        rgba(0, 0, 0, 0.04) 72px
+      );
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom)) 12px;
+      opacity: 1;
+      transition: opacity 0.4s ease;
+    }
+
+    #intro-overlay.intro-fading {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Slide-out navigation drawer transitions */
+    #drawer-backdrop {
+      transition: opacity 0.24s ease, visibility 0.24s ease;
+    }
+    #drawer-backdrop.drawer-closed {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    #mobile-drawer {
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #mobile-drawer.drawer-closed {
+      transform: translateX(-100%);
+    }
+
+    /* Subtle fixture card hover elevation */
+    .fixture-card {
+      transition: border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .fixture-card:hover {
+      border-color: #CBD5E1;
+      box-shadow: 0 4px 14px -4px rgba(17, 24, 39, 0.06);
+    }
+
+    /* Smooth accordion expansion */
+    @keyframes expandFade {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-expand {
+      animation: expandFade 0.18s ease-out forwards;
+    }
+
+    /* Toast feedback pill */
+    #toast-pill {
+      transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#F6F8FA] text-[#111827]">
+
+  <!-- ===================================================================== -->
+  <!-- 1. STARTUP PITCH ANIMATION (4.6s, NO SKIP, NO BOTTOM PROGRESS BAR)    -->
+  <!--    Players: Chief (#10), Foers (#9), Hunter (GK), Calum (Sideline)    -->
+  <!-- ===================================================================== -->
+  <div id="intro-overlay" aria-label="Footy Checker Matchday Intro">
+    <!-- Clean Centered Brand Pill Above SVG Pitch -->
+    <div class="shrink-0 mb-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/35 border border-white/15 backdrop-blur-md shadow-md">
+      <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" fill="none" aria-hidden="true">
+        <path d="M11 12H37L41 18V36H15L11 33V12Z" fill="#0F172A" fill-opacity="0.35" />
+        <g stroke="#E2E8F0" stroke-opacity="0.55" stroke-width="1.2">
+          <line x1="18" y1="12" x2="21" y2="36" />
+          <line x1="25" y1="12" x2="28" y2="36" />
+          <line x1="32" y1="12" x2="35" y2="36" />
+          <line x1="12" y1="20" x2="40" y2="20" />
+          <line x1="13" y1="28" x2="40" y2="28" />
+        </g>
+        <path d="M10 37V13C10 12.1 10.7 11.4 11.6 11.4H36.4C37.3 11.4 38 12.1 38 13V37" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M5 33L16 27" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" />
+        <g transform="translate(24, 23)">
+          <circle cx="0" cy="0" r="8" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.5" />
+          <polygon points="0,-3.4 3.2,-1 2,2.8 -2,2.8 -3.2,-1" fill="#0F172A" />
+        </g>
+      </svg>
+      <span class="text-[11px] sm:text-xs font-extrabold tracking-[0.15em] uppercase text-white whitespace-nowrap">
+        FOOTY CHECKER
+      </span>
+    </div>
+
+    <!-- Self-Contained Responsive Vertical Pitch SVG -->
+    <div class="flex-1 min-h-0 w-full flex items-center justify-center">
+      <svg
+        id="intro-svg"
+        viewBox="0 0 400 580"
+        preserveAspectRatio="xMidYMid meet"
+        style="width: 100%; max-width: 400px; max-height: 82vh; display: block;"
+        class="select-none"
+        role="img"
+        aria-label="Animated football sequence showing Chief and Foers scoring past goalkeeper Hunter while Calum celebrates on the sideline"
+      >
+        <defs>
+          <!-- Mowed stadium turf stripes -->
+          <pattern id="pitch-stripes" width="284" height="60" patternUnits="userSpaceOnUse">
+            <rect width="284" height="30" fill="#1b7c47" />
+            <rect y="30" width="284" height="30" fill="#166c3d" />
+          </pattern>
+
+          <!-- Sleek Pro Kit Gradients -->
+          <linearGradient id="kit-emerald" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#10B981" />
+            <stop offset="55%" stop-color="#059669" />
+            <stop offset="100%" stop-color="#047857" />
+          </linearGradient>
+          <linearGradient id="kit-hunter" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FB923C" />
+            <stop offset="55%" stop-color="#F97316" />
+            <stop offset="100%" stop-color="#EA580C" />
+          </linearGradient>
+          <linearGradient id="bib-calum" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FDE047" />
+            <stop offset="100%" stop-color="#F59E0B" />
+          </linearGradient>
+
+          <!-- 3D Brushed Metallic Goalpost & Net Roof Depth -->
+          <linearGradient id="post-metal" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="50%" stop-color="#E2E8F0" />
+            <stop offset="100%" stop-color="#94A3B8" />
+          </linearGradient>
+          <linearGradient id="goal-depth" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#041910" stop-opacity="0.74" />
+            <stop offset="100%" stop-color="#0B3B24" stop-opacity="0.32" />
+          </linearGradient>
+          <radialGradient id="net-impact-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#6EE7B7" stop-opacity="0.95" />
+            <stop offset="55%" stop-color="#10B981" stop-opacity="0.48" />
+            <stop offset="100%" stop-color="#10B981" stop-opacity="0" />
+          </radialGradient>
+
+          <!-- 3D Modern Pro Match Ball Gradient -->
+          <radialGradient id="ball-sphere" cx="34%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="68%" stop-color="#F1F5F9" />
+            <stop offset="100%" stop-color="#94A3B8" />
+          </radialGradient>
+
+          <!-- Crisp Drop Shadows & Neon Glow -->
+          <filter id="pill-shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.5" />
+          </filter>
+          <filter id="neon-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="3.2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- Outer Pitch Surround -->
+        <rect x="6" y="6" width="388" height="568" rx="22" fill="#0d4125" stroke="rgba(255,255,255,0.16)" stroke-width="1.6" />
+
+        <!-- Playable Pitch Surface (x: 16..300, center x: 158, y: 96..556) -->
+        <rect x="16" y="96" width="284" height="460" rx="4" fill="url(#pitch-stripes)" />
+
+        <!-- Crisp White Pitch Markings -->
+        <g fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.3">
+          <rect x="16" y="96" width="284" height="460" />
+          <!-- Penalty Box -->
+          <rect x="52" y="96" width="212" height="126" />
+          <!-- 6-Yard Box -->
+          <rect x="99" y="96" width="118" height="46" />
+          <!-- Penalty Arc -->
+          <path d="M 108 222 A 56 56 0 0 0 208 222" />
+          <!-- Halfway Line & Center Circle -->
+          <line x1="16" y1="530" x2="300" y2="530" />
+          <path d="M 108 530 A 50 50 0 0 1 208 530" />
+          <!-- Top Corner Arcs -->
+          <path d="M 16 107 A 11 11 0 0 0 27 96" />
+          <path d="M 289 96 A 11 11 0 0 0 300 107" />
+        </g>
+        <!-- Penalty Spot -->
+        <circle cx="158" cy="188" r="3.5" fill="#FFFFFF" />
+
+        <!-- RIGHT SIDELINE DUGOUT BENCH (outside touchline, x: 308..388) -->
+        <g id="dugout-group">
+          <rect x="308" y="314" width="52" height="114" rx="5" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.55)" stroke-width="1.4" stroke-dasharray="4 3" />
+          <rect x="364" y="318" width="26" height="106" rx="6" fill="#0F172A" stroke="#64748B" stroke-width="1.4" />
+          <rect x="367" y="324" width="9" height="94" rx="2.5" fill="#334155" />
+          <rect x="368.5" y="329" width="6" height="17" rx="2" fill="#1E293B" />
+          <rect x="368.5" y="350" width="6" height="17" rx="2" fill="#1E293B" />
+          <rect x="368.5" y="371" width="6" height="17" rx="2" fill="#1E293B" />
+          <rect x="368.5" y="392" width="6" height="17" rx="2" fill="#1E293B" />
+          <text x="383" y="371" fill="#94A3B8" font-size="6.8" font-weight="800" letter-spacing="1.1" text-anchor="middle" transform="rotate(90 383 371)">BENCH</text>
+        </g>
+
+        <!-- 3D METALLIC STADIUM GOAL & RIPPLING DIAMOND NET (centered x: 158, width: 140) -->
+        <g id="goal-group">
+          <polygon points="88,96 98,46 218,46 228,96" fill="url(#goal-depth)" />
+          <path d="M 98 46 L 98 58 M 218 46 L 218 58 M 88 96 L 98 58 L 218 58 L 228 96" fill="none" stroke="#64748B" stroke-width="1.6" stroke-linecap="round" opacity="0.65" />
+          <!-- Emerald Net Impact Glow -->
+          <ellipse id="net-glow" cx="208" cy="63" rx="26" ry="18" fill="url(#net-impact-glow)" opacity="0" />
+          <!-- Dynamic Rippling Diamond Stadium Net Mesh -->
+          <g id="goal-net-lines" stroke="rgba(241,245,249,0.7)" stroke-width="1.15" fill="none"></g>
+          <!-- Rear Top Frame Rail -->
+          <path d="M 88 88 L 98 46 L 218 46 L 228 88" fill="none" stroke="#CBD5E1" stroke-width="2.2" stroke-linejoin="round" />
+          <!-- 3D Brushed Metallic Crossbar & Goalposts -->
+          <path d="M 88 96 L 88 87 L 228 87 L 228 96" fill="none" stroke="#0F172A" stroke-opacity="0.35" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M 88 96 L 88 87 L 228 87 L 228 96" fill="none" stroke="url(#post-metal)" stroke-width="5.8" stroke-linecap="round" stroke-linejoin="round" filter="url(#pill-shadow)" />
+          <line x1="91" y1="85.8" x2="225" y2="85.8" stroke="#FFFFFF" stroke-width="1.4" stroke-linecap="round" opacity="0.95" />
+          <circle cx="88" cy="96" r="3.2" fill="#FFFFFF" stroke="#475569" stroke-width="1" />
+          <circle cx="228" cy="96" r="3.2" fill="#FFFFFF" stroke="#475569" stroke-width="1" />
+        </g>
+
+        <!-- GOALKEEPER "HUNTER" CLEAR NAME BADGE (Above goal — zero overlap) -->
+        <g id="hunter-label" transform="translate(158, 24)" filter="url(#pill-shadow)">
+          <rect x="-40" y="-13.5" width="80" height="26" rx="13" fill="#0F172A" stroke="#FB923C" stroke-width="2.3" />
+          <polygon points="-5,12.5 5,12.5 0,18" fill="#FB923C" />
+          <text x="0" y="4.5" text-anchor="middle" fill="#FFFFFF" font-size="13.5" font-weight="900" letter-spacing="0.4">Hunter</text>
+        </g>
+
+        <!-- GOALKEEPER "HUNTER" SPRITE (Orange/Black Keeper Kit + White Gloves) -->
+        <g id="hunter-sprite" transform="translate(158, 118)">
+          <ellipse cx="0" cy="24" rx="20" ry="7" fill="rgba(0,0,0,0.34)" />
+          <g id="hunter-body" transform="rotate(0)">
+            <!-- Keeper Boots -->
+            <ellipse cx="-8" cy="22" rx="5.5" ry="7" fill="#0F172A" stroke="#FB923C" stroke-width="1.1" />
+            <ellipse cx="8" cy="22" rx="5.5" ry="7" fill="#0F172A" stroke="#FB923C" stroke-width="1.1" />
+            <!-- Black Keeper Shorts with Orange Trim -->
+            <rect x="-14.5" y="5" width="29" height="13.5" rx="4.5" fill="#0F172A" />
+            <rect x="-14.5" y="6" width="3" height="10.5" rx="1.5" fill="#FB923C" />
+            <rect x="11.5" y="6" width="3" height="10.5" rx="1.5" fill="#FB923C" />
+            <!-- Outstretched Diving Arms -->
+            <line id="hunter-arm-l" x1="-15" y1="-2" x2="-25" y2="8" stroke="#EA580C" stroke-width="7" stroke-linecap="round" />
+            <line id="hunter-arm-r" x1="15" y1="-2" x2="25" y2="8" stroke="#EA580C" stroke-width="7" stroke-linecap="round" />
+            <!-- White Padded Keeper Gloves -->
+            <circle id="hunter-glove-l" cx="-26.5" cy="9.5" r="6" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.6" />
+            <circle id="hunter-glove-r" cx="26.5" cy="9.5" r="6" fill="#FFFFFF" stroke="#0F172A" stroke-width="1.6" />
+            <!-- Gradient Orange Keeper Jersey #1 -->
+            <rect x="-17" y="-14.5" width="34" height="23" rx="8" fill="url(#kit-hunter)" stroke="#7C2D12" stroke-width="1.5" />
+            <path d="M -15.5 -8.5 Q -10.5 -14.5 -5 -14.5 L -9.5 -5 Z" fill="#0F172A" opacity="0.4" />
+            <path d="M 15.5 -8.5 Q 10.5 -14.5 5 -14.5 L 9.5 -5 Z" fill="#0F172A" opacity="0.4" />
+            <path d="M -5 -14.5 L 0 -10 L 5 -14.5" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" />
+            <text x="0" y="2.5" text-anchor="middle" fill="#0F172A" font-size="13.5" font-weight="900">1</text>
+            <!-- Head & Hair -->
+            <circle cx="0" cy="-24" r="10.8" fill="#F4C7A6" stroke="rgba(15,23,42,0.4)" stroke-width="1.3" />
+            <path d="M -10.4 -25 C -9.6 -35.5 9.6 -35.5 10.4 -25 Q 4.5 -28 0 -26.5 Q -4.5 -28 -10.4 -25 Z" fill="#451A03" />
+          </g>
+        </g>
+
+        <!-- SIDELINE SUB "CALUM" CLEAR NAME BADGE -->
+        <g id="calum-label" transform="translate(346, 298)" filter="url(#pill-shadow)">
+          <rect x="-37" y="-13" width="74" height="25" rx="12.5" fill="#0F172A" stroke="#FACC15" stroke-width="2.3" />
+          <polygon points="-4.5,12 4.5,12 0,17" fill="#FACC15" />
+          <text x="0" y="4.5" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="900" letter-spacing="0.3">Calum</text>
+        </g>
+
+        <!-- CALUM CHEER POPUP ON GOAL -->
+        <g id="calum-cheer" transform="translate(346, 264)" opacity="0" filter="url(#pill-shadow)">
+          <g id="calum-cheer-inner" transform="scale(0)">
+            <rect x="-25" y="-11" width="50" height="22" rx="11" fill="#10B981" stroke="#ECFDF5" stroke-width="1.5" />
+            <text x="0" y="4" text-anchor="middle" fill="#052E16" font-size="11.5" font-weight="900">YES!</text>
+          </g>
+        </g>
+
+        <!-- SIDELINE SUBSTITUTE "CALUM" SPRITE (Bright Yellow/Amber Bib) -->
+        <g id="calum-sprite" transform="translate(334, 370)">
+          <ellipse cx="0" cy="23" rx="18" ry="6.5" fill="rgba(0,0,0,0.32)" />
+          <g id="calum-body" transform="translate(0, 0)">
+            <ellipse cx="-7.5" cy="21" rx="5.2" ry="6.8" fill="#0F172A" stroke="#34D399" stroke-width="1.1" />
+            <ellipse cx="7.5" cy="21" rx="5.2" ry="6.8" fill="#0F172A" stroke="#34D399" stroke-width="1.1" />
+            <rect x="-13.5" y="5" width="27" height="13" rx="4" fill="#1E293B" />
+            <rect x="-13.5" y="6" width="2.5" height="10" rx="1.2" fill="#34D399" />
+            <rect x="11" y="6" width="2.5" height="10" rx="1.2" fill="#34D399" />
+            <line id="calum-arm-l" x1="-14.5" y1="-2" x2="-22" y2="8" stroke="#1E293B" stroke-width="6.8" stroke-linecap="round" />
+            <line id="calum-arm-r" x1="14.5" y1="-2" x2="22" y2="8" stroke="#1E293B" stroke-width="6.8" stroke-linecap="round" />
+            <!-- High-Vis Yellow/Amber Bib -->
+            <rect x="-16" y="-14" width="32" height="22" rx="8" fill="url(#bib-calum)" stroke="#B45309" stroke-width="1.5" />
+            <rect x="-16" y="-14" width="6" height="6.8" rx="2" fill="#1E293B" />
+            <rect x="10" y="-14" width="6" height="6.8" rx="2" fill="#1E293B" />
+            <path d="M -4.8 -14 L 0 -9.2 L 4.8 -14" fill="none" stroke="#1E293B" stroke-width="1.9" stroke-linecap="round" />
+            <!-- Head & Hair -->
+            <circle cx="0" cy="-23.5" r="10.4" fill="#F4C7A6" stroke="rgba(15,23,42,0.4)" stroke-width="1.3" />
+            <path d="M -10 -24.5 C -9 -34.8 9 -34.8 10 -24.5 Q 3 -27.8 -3 -26 Z" fill="#78350F" />
+          </g>
+        </g>
+
+        <!-- ATTACKER #10 "CHIEF" (Emerald/White Pro Kit) -->
+        <g id="chief-sprite" transform="translate(88, 448)">
+          <ellipse cx="0" cy="24" rx="19.5" ry="7" fill="rgba(0,0,0,0.34)" />
+          <g id="chief-body" transform="translate(0, 0)">
+            <ellipse id="chief-leg-l" cx="-8" cy="22" rx="5.4" ry="7" fill="#0F172A" stroke="#34D399" stroke-width="1.1" />
+            <ellipse id="chief-leg-r" cx="8" cy="22" rx="5.4" ry="7" fill="#0F172A" stroke="#34D399" stroke-width="1.1" />
+            <rect x="-14.5" y="5" width="29" height="13.5" rx="4.5" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" />
+            <rect x="-14.5" y="6" width="3" height="10.5" rx="1.5" fill="#10B981" />
+            <rect x="11.5" y="6" width="3" height="10.5" rx="1.5" fill="#10B981" />
+            <line id="chief-arm-l" x1="-15" y1="-2" x2="-23.5" y2="8" stroke="#10B981" stroke-width="7" stroke-linecap="round" />
+            <line id="chief-arm-r" x1="15" y1="-2" x2="23.5" y2="8" stroke="#10B981" stroke-width="7" stroke-linecap="round" />
+            <!-- Pro Gradient Emerald Jersey #10 -->
+            <rect x="-17" y="-14.5" width="34" height="23" rx="8" fill="url(#kit-emerald)" stroke="#FFFFFF" stroke-width="1.8" />
+            <path d="M -5.8 -14.5 L 0 -9.2 L 5.8 -14.5" fill="none" stroke="#FDE047" stroke-width="2" stroke-linecap="round" />
+            <line x1="-14.5" y1="-7.5" x2="-9.5" y2="-13" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" />
+            <line x1="14.5" y1="-7.5" x2="9.5" y2="-13" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" />
+            <text x="0" y="3" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="900">10</text>
+            <!-- Head & Stylish Hair -->
+            <circle cx="0" cy="-24" r="10.8" fill="#F4C7A6" stroke="rgba(15,23,42,0.4)" stroke-width="1.3" />
+            <path d="M -10.4 -25.5 C -9.6 -36 9.6 -36 10.4 -25.5 L 5.5 -28 L 0 -26.5 L -5.5 -28 Z" fill="#0F172A" />
+          </g>
+        </g>
+
+        <!-- "CHIEF" HIGH-CONTRAST NAME BADGE -->
+        <g id="chief-label" transform="translate(88, 495)" filter="url(#pill-shadow)">
+          <polygon points="-4.5,-13 4.5,-13 0,-18" fill="#34D399" />
+          <rect x="-36" y="-13" width="72" height="25" rx="12.5" fill="#0F172A" stroke="#34D399" stroke-width="2.3" />
+          <text x="0" y="4.5" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="900" letter-spacing="0.4">Chief</text>
+        </g>
+
+        <!-- ATTACKER #9 "FOERS" (Emerald/White Pro Kit + White Headband) -->
+        <g id="foers-sprite" transform="translate(226, 458)">
+          <ellipse cx="0" cy="24" rx="19.5" ry="7" fill="rgba(0,0,0,0.34)" />
+          <g id="foers-body" transform="translate(0, 0)">
+            <ellipse id="foers-leg-l" cx="-8" cy="22" rx="5.4" ry="7" fill="#0F172A" stroke="#34D399" stroke-width="1.1" />
+            <ellipse id="foers-leg-r" cx="8" cy="22" rx="5.4" ry="7" fill="#0F172A" stroke="#34D399" stroke-width="1.1" />
+            <rect x="-14.5" y="5" width="29" height="13.5" rx="4.5" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.1" />
+            <rect x="-14.5" y="6" width="3" height="10.5" rx="1.5" fill="#10B981" />
+            <rect x="11.5" y="6" width="3" height="10.5" rx="1.5" fill="#10B981" />
+            <line id="foers-arm-l" x1="-15" y1="-2" x2="-23.5" y2="8" stroke="#10B981" stroke-width="7" stroke-linecap="round" />
+            <line id="foers-arm-r" x1="15" y1="-2" x2="23.5" y2="8" stroke="#10B981" stroke-width="7" stroke-linecap="round" />
+            <!-- Pro Gradient Emerald Jersey #9 -->
+            <rect x="-17" y="-14.5" width="34" height="23" rx="8" fill="url(#kit-emerald)" stroke="#FFFFFF" stroke-width="1.8" />
+            <path d="M -5.8 -14.5 L 0 -9.2 L 5.8 -14.5" fill="none" stroke="#FDE047" stroke-width="2" stroke-linecap="round" />
+            <line x1="-14.5" y1="-7.5" x2="-9.5" y2="-13" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" />
+            <line x1="14.5" y1="-7.5" x2="9.5" y2="-13" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round" />
+            <text x="0" y="3" text-anchor="middle" fill="#FFFFFF" font-size="13.5" font-weight="900">9</text>
+            <!-- Head, Hair & White Athletic Headband -->
+            <circle cx="0" cy="-24" r="10.8" fill="#F4C7A6" stroke="rgba(15,23,42,0.4)" stroke-width="1.3" />
+            <path d="M -10.4 -25.5 C -9.6 -36.5 9.6 -36.5 10.4 -25.5 Q 3.5 -28.5 -2 -27.5 Q -6.5 -28.5 -10.4 -25.5 Z" fill="#334155" />
+            <path d="M -10.2 -25.8 Q 0 -28.2 10.2 -25.8" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" />
+          </g>
+        </g>
+
+        <!-- "FOERS" HIGH-CONTRAST NAME BADGE -->
+        <g id="foers-label" transform="translate(226, 505)" filter="url(#pill-shadow)">
+          <polygon points="-4.5,-13 4.5,-13 0,-18" fill="#34D399" />
+          <rect x="-36" y="-13" width="72" height="25" rx="12.5" fill="#0F172A" stroke="#34D399" stroke-width="2.3" />
+          <text x="0" y="4.5" text-anchor="middle" fill="#FFFFFF" font-size="13" font-weight="900" letter-spacing="0.4">Foers</text>
+        </g>
+
+        <!-- DUAL-LAYER GLOWING BALL MOTION TRAIL -->
+        <path id="ball-trail-glow" d="" fill="none" stroke="#34D399" stroke-width="10" stroke-linecap="round" opacity="0" filter="url(#neon-glow)" />
+        <path id="ball-trail" d="" fill="none" stroke="#ECFDF5" stroke-width="3.8" stroke-linecap="round" opacity="0" />
+
+        <!-- 3D MODERN STAR-PANEL PRO MATCH BALL -->
+        <g id="ball-sprite" transform="translate(100, 412)">
+          <ellipse cx="2" cy="8" rx="9" ry="3.8" fill="rgba(0,0,0,0.36)" />
+          <g id="ball-spin" transform="rotate(0)">
+            <circle cx="0" cy="0" r="10" fill="url(#ball-sphere)" stroke="#0F172A" stroke-width="1.6" />
+            <polygon points="0,-5.3 1.5,-1.7 5.3,-1.5 2.3,0.9 3.3,4.7 0,2.4 -3.3,4.7 -2.3,0.9 -5.3,-1.5 -1.5,-1.7" fill="#0F172A" />
+            <polygon points="0,-2.7 0.8,-0.9 2.7,-0.8 1.2,0.5 1.7,2.4 0,1.2 -1.7,2.4 -1.2,0.5 -2.7,-0.8 -0.8,-0.9" fill="#10B981" />
+            <path d="M -3.4 -9.3 Q 0 -6.8 3.4 -9.3" fill="#059669" stroke="#0F172A" stroke-width="0.9" />
+            <path d="M 7.6 -6 Q 6.2 -2.4 9.6 -1.1" fill="#0F172A" />
+            <path d="M -7.6 -6 Q -6.2 -2.4 -9.6 -1.1" fill="#0F172A" />
+            <path d="M -6.6 7.2 Q -3.4 5.2 -2.4 9.4" fill="#059669" />
+            <path d="M 6.6 7.2 Q 3.4 5.2 2.4 9.4" fill="#059669" />
+            <ellipse cx="-3.5" cy="-4.1" rx="2.5" ry="1.4" transform="rotate(-30 -3.5 -4.1)" fill="#FFFFFF" opacity="0.8" />
+          </g>
+        </g>
+
+        <!-- GOAL IMPACT SHOCKWAVE, BURST SPARKS & BOLD "GOAL!" BADGE -->
+        <circle id="goal-ring" cx="208" cy="63" r="10" fill="none" stroke="#6EE7B7" stroke-width="3.8" opacity="0" filter="url(#neon-glow)" />
+        <g id="goal-sparks" transform="translate(208, 63)" opacity="0">
+          <g id="goal-sparks-inner" transform="scale(0.6)" stroke="#FDE047" stroke-width="2.4" stroke-linecap="round">
+            <line x1="0" y1="-11" x2="0" y2="-23" />
+            <line x1="10" y1="-7" x2="20" y2="-15" />
+            <line x1="12" y1="3" x2="24" y2="7" />
+            <line x1="6" y1="11" x2="13" y2="21" />
+            <line x1="-10" y1="-8" x2="-19" y2="-16" />
+            <line x1="-11" y1="5" x2="-22" y2="11" />
+          </g>
+        </g>
+        <g id="goal-flash" transform="translate(158, 152)" opacity="0" filter="url(#pill-shadow)">
+          <g id="goal-flash-inner" transform="scale(0.7)">
+            <rect x="-76" y="-25" width="152" height="50" rx="15" fill="#0F172A" fill-opacity="0.94" stroke="#34D399" stroke-width="2.8" />
+            <text x="0" y="9" text-anchor="middle" fill="#FFFFFF" font-size="28" font-weight="900" letter-spacing="1.8">GOAL!</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. STICKY 56px HEADER (EXACT SWAPPED LAYOUT)                          -->
+  <!--    LEFT: Hamburger Menu | CENTER: Compact Title | RIGHT: Static Icon  -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur-md border-b border-[#E5E9F0]">
+    <div class="h-full max-w-6xl mx-auto px-3 sm:px-5 grid grid-cols-[44px_1fr_44px] items-center gap-1">
+      <!-- LEFT: Hamburger Menu Button -->
+      <div class="flex items-center justify-start">
+        <button
+          id="open-menu-btn"
+          type="button"
+          class="w-10 h-10 rounded-xl bg-white hover:bg-[#F6F8FA] active:scale-95 border border-[#E5E9F0] flex items-center justify-center text-[#111827] transition cursor-pointer"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="mobile-drawer"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- CENTER: Compact "Footy Checker" Title (Fits cleanly on narrow mobile, no truncation) -->
+      <div class="flex items-center justify-center min-w-0">
+        <span class="text-[16px] sm:text-[17px] font-bold tracking-tight whitespace-nowrap select-none pointer-events-none">
+          <span class="text-[#111827]">Footy</span> <span class="text-[#059669]">Checker</span>
+        </span>
+      </div>
+
+      <!-- RIGHT: Decorative Football & Mini Goal SVG Icon (NOT CLICKABLE) -->
+      <div class="flex items-center justify-end">
+        <div
+          class="w-10 h-10 rounded-xl bg-[#ECFDF5] border border-[#D1FAE5] flex items-center justify-center pointer-events-none select-none cursor-default"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 48 48" class="w-6 h-6" fill="none">
+            <path d="M11 12H37L41 18V36H15L11 33V12Z" fill="#059669" fill-opacity="0.14" />
+            <g stroke="#059669" stroke-opacity="0.45" stroke-width="1.1">
+              <line x1="18" y1="12" x2="21" y2="36" />
+              <line x1="25" y1="12" x2="28" y2="36" />
+              <line x1="32" y1="12" x2="35" y2="36" />
+              <line x1="12" y1="20" x2="40" y2="20" />
+              <line x1="13" y1="28" x2="40" y2="28" />
+            </g>
+            <path d="M10 37V13C10 12.1 10.7 11.4 11.6 11.4H36.4C37.3 11.4 38 12.1 38 13V37" stroke="#111827" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M5 33L16 27" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" />
+            <g transform="translate(24, 23)">
+              <circle cx="0" cy="0" r="8" fill="#FFFFFF" stroke="#111827" stroke-width="1.5" />
+              <polygon points="0,-3.4 3.2,-1 2,2.8 -2,2.8 -3.2,-1" fill="#111827" />
+              <line x1="0" y1="-3.4" x2="0" y2="-7.8" stroke="#111827" stroke-width="1.1" />
+              <line x1="3.2" y1="-1" x2="7.5" y2="-2.4" stroke="#111827" stroke-width="1.1" />
+              <line x1="2" y1="2.8" x2="4.8" y2="6.4" stroke="#111827" stroke-width="1.1" />
+              <line x1="-2" y1="2.8" x2="-4.8" y2="6.4" stroke="#111827" stroke-width="1.1" />
+              <line x1="-3.2" y1="-1" x2="-7.5" y2="-2.4" stroke="#111827" stroke-width="1.1" />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 3. SLIDE-OUT SECTIONED NAVIGATION DRAWER                              -->
+  <!-- ===================================================================== -->
+  <div id="drawer-backdrop" class="drawer-closed fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[2px]" aria-hidden="true"></div>
+
+  <aside
+    id="mobile-drawer"
+    class="drawer-closed fixed inset-y-0 left-0 z-50 w-[285px] max-w-[85vw] bg-white border-r border-[#E5E9F0] shadow-2xl flex flex-col"
+    aria-label="Navigation Menu"
+  >
+    <div class="h-14 px-4 border-b border-[#E5E9F0] flex items-center justify-between shrink-0">
+      <span class="text-sm font-bold tracking-tight text-[#111827]">Menu</span>
+      <button
+        id="close-menu-btn"
+        type="button"
+        class="w-9 h-9 rounded-xl hover:bg-[#F6F8FA] flex items-center justify-center text-[#6B7280] hover:text-[#111827] transition cursor-pointer"
+        aria-label="Close navigation menu"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <nav id="drawer-nav-container" class="flex-1 overflow-y-auto p-3 space-y-5"></nav>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- 4. APP SHELL: PERSISTENT DESKTOP SIDEBAR + DIRECT CONTENT             -->
+  <!-- ===================================================================== -->
+  <div id="app-grid" class="max-w-6xl mx-auto px-3 sm:px-5 py-4 lg:grid lg:grid-cols-[252px_minmax(0,1fr)] lg:gap-6 items-start">
+
+    <!-- Persistent Desktop Sidebar (>= 1024px) -->
+    <aside id="desktop-sidebar" class="hidden lg:block sticky top-[72px] bg-white border border-[#E5E9F0] rounded-2xl p-3 shadow-sm">
+      <nav id="desktop-nav-container" class="space-y-5" aria-label="Main Sidebar Navigation"></nav>
+    </aside>
+
+    <!-- Main View: Starts Directly With Content (No Repeated Top Hero Boxes) -->
+    <main class="min-w-0 space-y-3.5 pb-12">
+
+      <!-- HOME VIEW: Compact Search Card + Quick Club Chips -->
+      <section id="home-search-card" class="bg-white border border-[#E5E9F0] rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_2px_rgba(17,24,39,0.03)] space-y-3">
+        <form id="club-search-form" class="relative" autocomplete="off">
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1 min-w-0">
+              <svg class="w-4 h-4 text-[#6B7280] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                id="club-search-input"
+                type="text"
+                placeholder="Search any club..."
+                class="w-full h-10 pl-9 pr-8 rounded-xl bg-[#F6F8FA] border border-[#E5E9F0] focus:bg-white focus:border-[#059669] focus:ring-2 focus:ring-[#059669]/15 outline-none text-sm text-[#111827] placeholder-[#9CA3AF] transition"
+              />
+              <button
+                id="clear-search-btn"
+                type="button"
+                class="hidden absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg hover:bg-slate-200/70 flex items-center justify-center text-[#6B7280] cursor-pointer"
+                aria-label="Clear club search"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <button
+              type="submit"
+              class="h-10 px-4 rounded-xl bg-[#059669] hover:bg-[#047857] active:scale-95 text-white text-sm font-semibold transition cursor-pointer shrink-0"
+            >
+              Find
+            </button>
+          </div>
+
+          <!-- Instant Autocomplete Dropdown -->
+          <div
+            id="club-suggestions"
+            class="hidden absolute z-20 left-0 right-0 mt-1.5 bg-white border border-[#E5E9F0] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+          ></div>
+        </form>
+
+        <!-- Horizontally Scrollable Quick-Select Club Chips -->
+        <div id="quick-club-chips" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"></div>
+      </section>
+
+      <!-- MINIMAL UNBOXED SINGLE-LINE HEADING -->
+      <div class="px-1 flex items-center justify-between gap-2 min-w-0">
+        <h1 id="inline-section-label" class="text-[13px] sm:text-sm font-bold text-[#111827] tracking-tight truncate">
+          Arsenal &middot; Next 10 Games
+        </h1>
+        <span id="inline-section-meta" class="text-[11px] font-medium text-[#6B7280] shrink-0">
+          GMT
+        </span>
+      </div>
+
+      <!-- Main Dynamic Content List (10 Fixture Cards OR My Picks) -->
+      <section id="content-list" class="space-y-3"></section>
+
+    </main>
+  </div>
+
+  <!-- Minimal Toast Notification -->
+  <div id="toast-pill" class="pointer-events-none fixed bottom-5 left-1/2 -translate-x-1/2 translate-y-8 opacity-0 z-50 px-4 py-2.5 rounded-full bg-[#111827] text-white text-xs sm:text-sm font-semibold shadow-lg flex items-center gap-2 max-w-[90vw]">
+    <span class="w-2 h-2 rounded-full bg-[#10B981] shrink-0"></span>
+    <span id="toast-text" class="truncate">Pick saved</span>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 5. SELF-CONTAINED APPLICATION LOGIC (BULLETPROOF IIFE)                -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      /* ===================================================================
+         PART 1: BULLETPROOF SVG STARTUP PITCH ANIMATION (4600ms)
+         - 0.0s–1.2s: Chief dribbles upfield, Foers sprints, Hunter shuffles, Calum bounces
+         - 1.2s–2.1s: Chief plays crisp diagonal pass to Foers & bursts into box
+         - 2.1s–2.9s: Foers slides return pass; Chief strikes curling rocket shot
+         - 2.9s–3.5s: Ball rockets into top-right corner as Hunter dives full stretch & misses
+         - 3.5s–4.6s: Net ripples & glows emerald, sparks & GOAL! pop, Chief/Foers/Calum celebrate
+         - At 4.6s: Smooth 400ms fade out -> display: none
+         =================================================================== */
+
+      var INTRO_DURATION_MS = 4600;
+      var introRafId = null;
+      var introStartTs = null;
+      var introActive = false;
+
+      function clamp(v, lo, hi) {
+        return Math.max(lo, Math.min(hi, v));
+      }
+      function lerp(a, b, t) {
+        return a + (b - a) * t;
+      }
+      function easeOutCubic(t) {
+        var x = clamp(t, 0, 1);
+        return 1 - Math.pow(1 - x, 3);
+      }
+      function easeInOutQuad(t) {
+        var x = clamp(t, 0, 1);
+        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+      }
+      function setAttr(el, name, val) {
+        if (el) el.setAttribute(name, val);
+      }
+
+      // Build & animate rippling 3D diamond stadium net mesh
+      function updateGoalNetMesh(netLinesGroup, impactSec) {
+        if (!netLinesGroup) return;
+        var cols = 12;
+        var rows = 5;
+        var gL = 88;
+        var gR = 228;
+        var gY = 96;
+        var backY = 46;
+        var hitX = 208;
+        var hitY = 63;
+
+        var rippling = impactSec > 0 && impactSec < 1.4;
+        var decay = rippling ? Math.exp(-impactSec * 2.5) : 0;
+
+        var grid = [];
+        for (var ci = 0; ci <= cols; ci++) {
+          grid[ci] = [];
+          var fracC = ci / cols;
+          for (var ri = 0; ri <= rows; ri++) {
+            var fracR = ri / rows;
+            var inset = fracR * 10;
+            var x = lerp(gL + inset, gR - inset, fracC);
+            var y = lerp(gY, backY, fracR);
+
+            if (rippling && ri > 0) {
+              var dx = x - hitX;
+              var dy = y - hitY;
+              var dist = Math.sqrt(dx * dx + dy * dy);
+              var falloff = Math.exp(-dist / 52);
+              var wave = Math.sin(impactSec * 34 - dist * 0.16) * 11 * decay * falloff;
+              var push = -12 * decay * falloff * fracR;
+              x += wave * 0.45;
+              y += push + wave * 0.4;
+            }
+            grid[ci][ri] = x.toFixed(1) + ',' + y.toFixed(1);
+          }
+        }
+
+        var paths = '';
+        for (var c = 0; c < cols; c++) {
+          for (var r = 0; r < rows; r++) {
+            paths += '<path d="M' + grid[c][r] + 'L' + grid[c + 1][r + 1] + 'M' + grid[c + 1][r] + 'L' + grid[c][r + 1] + '" />';
+          }
+        }
+        for (var hr = 1; hr < rows; hr++) {
+          var d = '';
+          for (var hc = 0; hc <= cols; hc++) {
+            d += (hc === 0 ? 'M' : 'L') + grid[hc][hr];
+          }
+          paths += '<path d="' + d + '" stroke-opacity="0.45" />';
+        }
+        netLinesGroup.innerHTML = paths;
+      }
+
+      // Render one deterministic frame of the 4.6-second SVG pitch intro
+      function renderIntroFrame(els, progress01) {
+        var p = clamp(progress01, 0, 1);
+        var t = p * 4.6; // seconds 0.0 -> 4.6
+        var shotHitTime = 3.45;
+        var impactSec = t - shotHitTime;
+
+        var targetX = 208;
+        var targetY = 63;
+
+        var cx = 88, cy = 448, cBob = 0, cArmsUp = false, cStride = 0;
+        var fx = 226, fy = 458, fBob = 0, fArmsUp = false, fStride = 0;
+        var hx = 158, hy = 118, hRot = 0, hDiveStretch = 0;
+        var bx = 100, by = 412, bRot = 0;
+        var trailD = '', trailOpacity = 0;
+        var calumJump = 0, calumArmsUp = false;
+
+        if (t < 1.2) {
+          // Phase 1 (0.0s–1.2s): Build-up & Dribble
+          var u1 = easeInOutQuad(t / 1.2);
+          cx = lerp(88, 102, u1);
+          cy = lerp(448, 336, u1);
+          cBob = Math.abs(Math.sin(t * 10)) * 3.5;
+          cStride = t * 14;
+
+          fx = lerp(226, 232, u1);
+          fy = lerp(458, 304, u1);
+          fBob = Math.abs(Math.sin(t * 10 + 1.4)) * 3.5;
+          fStride = t * 14 + 1.5;
+
+          bx = cx + 12 + Math.sin(t * 11) * 2.5;
+          by = cy - 32;
+          bRot = t * 440;
+
+          // Hunter shuffles ready in goal
+          hx = 158 + Math.sin(t * 5.2) * 14;
+          hy = 118 + Math.sin(t * 9) * 1.4;
+
+          // Calum bounces watching from the sideline
+          calumJump = Math.abs(Math.sin(t * 4.5)) * 3.5;
+        } else if (t < 2.1) {
+          // Phase 2 (1.2s–2.1s): Crisp diagonal pass Chief -> Foers
+          var u2 = easeInOutQuad((t - 1.2) / 0.9);
+          var passU = easeOutCubic(clamp((t - 1.2) / 0.72, 0, 1));
+
+          cx = lerp(102, 126, u2);
+          cy = lerp(336, 250, u2);
+          cBob = Math.abs(Math.sin(t * 11)) * 3.5;
+          cStride = t * 15;
+
+          fx = lerp(232, 226, u2);
+          fy = lerp(304, 262, u2);
+          fBob = Math.abs(Math.sin(t * 9)) * 2.5;
+          fStride = t * 12;
+
+          bx = lerp(114, 210, passU);
+          by = lerp(304, 250, passU);
+          bRot = t * 720;
+
+          var prevPass = Math.max(0, passU - 0.32);
+          trailD = 'M ' + lerp(114, 210, prevPass).toFixed(1) + ' ' + lerp(304, 250, prevPass).toFixed(1) +
+                   ' L ' + bx.toFixed(1) + ' ' + by.toFixed(1);
+          trailOpacity = 0.62;
+
+          hx = lerp(158, 178, u2);
+          hy = 118;
+          calumJump = Math.abs(Math.sin(t * 5.5)) * 4;
+        } else if (t < 2.9) {
+          // Phase 3 (2.1s–2.9s): Return pass Foers -> Chief & strike setup
+          var u3 = easeInOutQuad((t - 2.1) / 0.8);
+          var retU = easeOutCubic(clamp((t - 2.1) / 0.65, 0, 1));
+
+          cx = lerp(126, 138, u3);
+          cy = lerp(250, 212, u3);
+          cBob = Math.abs(Math.sin(t * 11)) * 3;
+          cStride = t * 15;
+
+          fx = lerp(226, 232, u3);
+          fy = lerp(262, 234, u3);
+          fStride = t * 10;
+
+          bx = lerp(210, 146, retU);
+          by = lerp(250, 192, retU);
+          bRot = t * 780;
+
+          var prevRet = Math.max(0, retU - 0.32);
+          trailD = 'M ' + lerp(210, 146, prevRet).toFixed(1) + ' ' + lerp(250, 192, prevRet).toFixed(1) +
+                   ' L ' + bx.toFixed(1) + ' ' + by.toFixed(1);
+          trailOpacity = retU < 0.96 ? 0.62 : 0;
+
+          hx = lerp(178, 154, u3);
+          hy = 118;
+          calumJump = Math.abs(Math.sin(t * 6)) * 4.5;
+        } else if (t < shotHitTime) {
+          // Phase 4 (2.9s–3.45s): Curling rocket shot + Hunter full-stretch dive (always beaten!)
+          var shotU = clamp((t - 2.9) / (shotHitTime - 2.9), 0, 1);
+
+          cx = lerp(138, 142, easeOutCubic(shotU));
+          cy = lerp(212, 204, easeOutCubic(shotU));
+          fx = lerp(232, 226, shotU);
+          fy = lerp(234, 226, shotU);
+
+          var curve = Math.sin(shotU * Math.PI) * 18;
+          bx = lerp(146, targetX, shotU) + curve;
+          by = lerp(192, targetY, shotU);
+          bRot = t * 1450;
+
+          var pU1 = Math.max(0, shotU - 0.42);
+          var pU2 = Math.max(0, shotU - 0.21);
+          var tx1 = lerp(146, targetX, pU1) + Math.sin(pU1 * Math.PI) * 18;
+          var ty1 = lerp(192, targetY, pU1);
+          var tx2 = lerp(146, targetX, pU2) + Math.sin(pU2 * Math.PI) * 18;
+          var ty2 = lerp(192, targetY, pU2);
+          trailD = 'M ' + tx1.toFixed(1) + ' ' + ty1.toFixed(1) +
+                   ' Q ' + tx2.toFixed(1) + ' ' + ty2.toFixed(1) +
+                   ' ' + bx.toFixed(1) + ' ' + by.toFixed(1);
+          trailOpacity = 0.88;
+
+          // Hunter launches horizontally across goalmouth with gloves stretched
+          var diveU = easeOutCubic(clamp((t - 2.94) / 0.50, 0, 1));
+          hx = lerp(154, 188, diveU);
+          hy = 118 - Math.sin(diveU * Math.PI) * 10;
+          hRot = lerp(0, 78, diveU);
+          hDiveStretch = diveU;
+
+          calumJump = 5;
+        } else {
+          // Phase 5 (3.45s–4.6s): Net ripple, emerald glow, sparks, GOAL! badge & celebrations
+          var post = t - shotHitTime;
+          var settleU = easeOutCubic(clamp(post / 0.42, 0, 1));
+
+          bx = lerp(targetX, targetX - 7, settleU);
+          by = lerp(targetY, targetY + 12, settleU);
+          bRot = shotHitTime * 1450 + settleU * 140;
+
+          // Hunter lands after full-stretch dive
+          var landU = easeOutCubic(clamp(post / 0.35, 0, 1));
+          hx = lerp(188, 194, landU);
+          hy = lerp(118, 124, landU);
+          hRot = lerp(78, 86, landU);
+          hDiveStretch = 1;
+
+          // Chief & Foers celebrate cleanly separated
+          var celU = easeOutCubic(clamp(post / 0.75, 0, 1));
+          cx = lerp(142, 112, celU);
+          cy = lerp(204, 248, celU);
+          cBob = Math.abs(Math.sin(post * 9)) * 14;
+          cArmsUp = true;
+
+          fx = lerp(226, 212, celU);
+          fy = lerp(226, 248, celU);
+          fBob = Math.abs(Math.sin(post * 9 + 0.8)) * 14;
+          fArmsUp = true;
+
+          // Calum leaps & cheers excitedly on the sideline!
+          calumJump = Math.abs(Math.sin(post * 10)) * 16;
+          calumArmsUp = true;
+        }
+
+        // 1. Update dynamic diamond net mesh
+        updateGoalNetMesh(els.netLinesGroup, impactSec);
+
+        // 2. Hunter (GK) — outer translate, inner rotate
+        setAttr(els.hunterSprite, 'transform', 'translate(' + hx.toFixed(1) + ',' + hy.toFixed(1) + ')');
+        setAttr(els.hunterBody, 'transform', 'rotate(' + hRot.toFixed(1) + ')');
+        var hArmY = lerp(8, -27, hDiveStretch);
+        var hArmX = lerp(25, 26, hDiveStretch);
+        setAttr(els.hunterArmL, 'x2', (-hArmX).toFixed(1));
+        setAttr(els.hunterArmL, 'y2', hArmY.toFixed(1));
+        setAttr(els.hunterArmR, 'x2', hArmX.toFixed(1));
+        setAttr(els.hunterArmR, 'y2', hArmY.toFixed(1));
+        setAttr(els.hunterGloveL, 'cx', (-hArmX - 1.5).toFixed(1));
+        setAttr(els.hunterGloveL, 'cy', (hArmY - (hDiveStretch > 0.3 ? 1.8 : -1.5)).toFixed(1));
+        setAttr(els.hunterGloveR, 'cx', (hArmX + 1.5).toFixed(1));
+        setAttr(els.hunterGloveR, 'cy', (hArmY - (hDiveStretch > 0.3 ? 1.8 : -1.5)).toFixed(1));
+        setAttr(els.hunterLabel, 'transform', 'translate(' + clamp(hx, 124, 196).toFixed(1) + ',24)');
+
+        // 3. Calum (Sideline)
+        setAttr(els.calumBody, 'transform', 'translate(0,' + (-calumJump).toFixed(1) + ')');
+        setAttr(els.calumLabel, 'transform', 'translate(346,' + (298 - calumJump * 0.6).toFixed(1) + ')');
+        if (calumArmsUp) {
+          var wave = Math.sin(impactSec * 18) * 4.5;
+          setAttr(els.calumArmL, 'x2', '-23');
+          setAttr(els.calumArmL, 'y2', (-25 + wave).toFixed(1));
+          setAttr(els.calumArmR, 'x2', '23');
+          setAttr(els.calumArmR, 'y2', (-25 - wave).toFixed(1));
+          var cheerS = easeOutCubic(clamp((impactSec - 0.05) / 0.25, 0, 1));
+          setAttr(els.calumCheer, 'transform', 'translate(346,' + (264 - calumJump * 0.45).toFixed(1) + ')');
+          setAttr(els.calumCheerInner, 'transform', 'scale(' + cheerS.toFixed(2) + ')');
+          setAttr(els.calumCheer, 'opacity', cheerS.toFixed(2));
+        } else {
+          setAttr(els.calumArmL, 'x2', '-22');
+          setAttr(els.calumArmL, 'y2', '8');
+          setAttr(els.calumArmR, 'x2', '22');
+          setAttr(els.calumArmR, 'y2', '8');
+          setAttr(els.calumCheer, 'opacity', '0');
+        }
+
+        // 4. Chief (#10)
+        setAttr(els.chiefSprite, 'transform', 'translate(' + cx.toFixed(1) + ',' + cy.toFixed(1) + ')');
+        setAttr(els.chiefBody, 'transform', 'translate(0,' + (-cBob).toFixed(1) + ')');
+        setAttr(els.chiefLegL, 'cy', (22 + Math.sin(cStride) * 4.5).toFixed(1));
+        setAttr(els.chiefLegR, 'cy', (22 - Math.sin(cStride) * 4.5).toFixed(1));
+        setAttr(els.chiefArmL, 'y2', cArmsUp ? '-26' : '8');
+        setAttr(els.chiefArmR, 'y2', cArmsUp ? '-26' : '8');
+        setAttr(els.chiefLabel, 'transform', 'translate(' + clamp(cx, 54, 260).toFixed(1) + ',' + (cy + 47).toFixed(1) + ')');
+
+        // 5. Foers (#9)
+        setAttr(els.foersSprite, 'transform', 'translate(' + fx.toFixed(1) + ',' + fy.toFixed(1) + ')');
+        setAttr(els.foersBody, 'transform', 'translate(0,' + (-fBob).toFixed(1) + ')');
+        setAttr(els.foersLegL, 'cy', (22 + Math.sin(fStride) * 4.5).toFixed(1));
+        setAttr(els.foersLegR, 'cy', (22 - Math.sin(fStride) * 4.5).toFixed(1));
+        setAttr(els.foersArmL, 'y2', fArmsUp ? '-26' : '8');
+        setAttr(els.foersArmR, 'y2', fArmsUp ? '-26' : '8');
+        setAttr(els.foersLabel, 'transform', 'translate(' + clamp(fx, 54, 260).toFixed(1) + ',' + (fy + 47).toFixed(1) + ')');
+
+        // 6. Pro Match Ball + Glowing Trail
+        setAttr(els.ballSprite, 'transform', 'translate(' + bx.toFixed(1) + ',' + by.toFixed(1) + ')');
+        setAttr(els.ballSpin, 'transform', 'rotate(' + (bRot % 360).toFixed(1) + ')');
+        setAttr(els.ballTrail, 'd', trailD);
+        setAttr(els.ballTrail, 'opacity', trailOpacity.toFixed(2));
+        setAttr(els.ballTrailGlow, 'd', trailD);
+        setAttr(els.ballTrailGlow, 'opacity', (trailOpacity * 0.65).toFixed(2));
+
+        // 7. Impact Shockwave, Emerald Net Glow, Sparks & Bold GOAL! Badge
+        if (impactSec > 0) {
+          var ringU = clamp(impactSec / 0.52, 0, 1);
+          setAttr(els.goalRing, 'r', (10 + ringU * 40).toFixed(1));
+          setAttr(els.goalRing, 'opacity', ((1 - ringU) * 0.92).toFixed(2));
+
+          var glowOp = Math.exp(-impactSec * 2.2);
+          setAttr(els.netGlow, 'opacity', glowOp.toFixed(2));
+
+          var sparkU = clamp(impactSec / 0.45, 0, 1);
+          setAttr(els.goalSparksInner, 'transform', 'scale(' + (0.6 + sparkU * 1.15).toFixed(2) + ')');
+          setAttr(els.goalSparks, 'opacity', ((1 - sparkU) * 0.95).toFixed(2));
+
+          var flashIn = easeOutCubic(clamp(impactSec / 0.26, 0, 1));
+          setAttr(els.goalFlashInner, 'transform', 'scale(' + lerp(0.7, 1.0, flashIn).toFixed(3) + ')');
+          setAttr(els.goalFlash, 'opacity', flashIn.toFixed(2));
+        } else {
+          setAttr(els.goalRing, 'opacity', '0');
+          setAttr(els.netGlow, 'opacity', '0');
+          setAttr(els.goalSparks, 'opacity', '0');
+          setAttr(els.goalFlash, 'opacity', '0');
+        }
+      }
+
+      function getIntroElements() {
+        return {
+          overlay: document.getElementById('intro-overlay'),
+          netLinesGroup: document.getElementById('goal-net-lines'),
+          hunterSprite: document.getElementById('hunter-sprite'),
+          hunterBody: document.getElementById('hunter-body'),
+          hunterLabel: document.getElementById('hunter-label'),
+          hunterArmL: document.getElementById('hunter-arm-l'),
+          hunterArmR: document.getElementById('hunter-arm-r'),
+          hunterGloveL: document.getElementById('hunter-glove-l'),
+          hunterGloveR: document.getElementById('hunter-glove-r'),
+          calumBody: document.getElementById('calum-body'),
+          calumArmL: document.getElementById('calum-arm-l'),
+          calumArmR: document.getElementById('calum-arm-r'),
+          calumLabel: document.getElementById('calum-label'),
+          calumCheer: document.getElementById('calum-cheer'),
+          calumCheerInner: document.getElementById('calum-cheer-inner'),
+          chiefSprite: document.getElementById('chief-sprite'),
+          chiefBody: document.getElementById('chief-body'),
+          chiefLabel: document.getElementById('chief-label'),
+          chiefArmL: document.getElementById('chief-arm-l'),
+          chiefArmR: document.getElementById('chief-arm-r'),
+          chiefLegL: document.getElementById('chief-leg-l'),
+          chiefLegR: document.getElementById('chief-leg-r'),
+          foersSprite: document.getElementById('foers-sprite'),
+          foersBody: document.getElementById('foers-body'),
+          foersLabel: document.getElementById('foers-label'),
+          foersArmL: document.getElementById('foers-arm-l'),
+          foersArmR: document.getElementById('foers-arm-r'),
+          foersLegL: document.getElementById('foers-leg-l'),
+          foersLegR: document.getElementById('foers-leg-r'),
+          ballSprite: document.getElementById('ball-sprite'),
+          ballSpin: document.getElementById('ball-spin'),
+          ballTrail: document.getElementById('ball-trail'),
+          ballTrailGlow: document.getElementById('ball-trail-glow'),
+          netGlow: document.getElementById('net-glow'),
+          goalRing: document.getElementById('goal-ring'),
+          goalSparks: document.getElementById('goal-sparks'),
+          goalSparksInner: document.getElementById('goal-sparks-inner'),
+          goalFlash: document.getElementById('goal-flash'),
+          goalFlashInner: document.getElementById('goal-flash-inner'),
+        };
+      }
+
+      var introEls = null;
+
+      function startIntro() {
+        if (!introEls) introEls = getIntroElements();
+        if (!introEls.overlay) return;
+
+        if (introRafId !== null) {
+          cancelAnimationFrame(introRafId);
+          introRafId = null;
+        }
+
+        introStartTs = null;
+        introActive = true;
+        introEls.overlay.style.display = 'flex';
+        introEls.overlay.classList.remove('intro-fading');
+        void introEls.overlay.offsetWidth; // force reflow for clean replay
+
+        renderIntroFrame(introEls, 0);
+
+        function tick(ts) {
+          if (!introActive) return;
+          if (introStartTs === null) introStartTs = ts;
+          var elapsed = ts - introStartTs;
+          var progress = clamp(elapsed / INTRO_DURATION_MS, 0, 1);
+
+          renderIntroFrame(introEls, progress);
+
+          if (progress >= 1) {
+            finishIntro();
+          } else {
+            introRafId = requestAnimationFrame(tick);
+          }
+        }
+
+        introRafId = requestAnimationFrame(tick);
+      }
+
+      function finishIntro() {
+        introActive = false;
+        if (introRafId !== null) {
+          cancelAnimationFrame(introRafId);
+          introRafId = null;
+        }
+        if (!introEls || !introEls.overlay) return;
+        introEls.overlay.classList.add('intro-fading');
+        setTimeout(function () {
+          if (!introActive && introEls && introEls.overlay) {
+            introEls.overlay.style.display = 'none';
+          }
+        }, 420);
+      }
+
+      /* ===================================================================
+         PART 2: TEAMS & CLUBS REGISTRY + ODDS-ONLY POISSON PREDICTOR
+         =================================================================== */
+
+      var TEAMS = {
+        // Premier League
+        'man-city': { id: 'man-city', name: 'Man City', fullName: 'Manchester City', short: 'MCI', league: 'Premier League', country: 'England', stadium: 'Etihad Stadium', c1: '#6CABDD', c2: '#1C2C5B', att: 90, def: 85, form: 'WWWDW', ucl: true },
+        'arsenal': { id: 'arsenal', name: 'Arsenal', fullName: 'Arsenal', short: 'ARS', league: 'Premier League', country: 'England', stadium: 'Emirates Stadium', c1: '#EF0107', c2: '#FFFFFF', att: 89, def: 89, form: 'WWDWW', ucl: true },
+        'liverpool': { id: 'liverpool', name: 'Liverpool', fullName: 'Liverpool', short: 'LIV', league: 'Premier League', country: 'England', stadium: 'Anfield', c1: '#C8102E', c2: '#F6EB61', att: 91, def: 87, form: 'WWWWL', ucl: true },
+        'chelsea': { id: 'chelsea', name: 'Chelsea', fullName: 'Chelsea', short: 'CHE', league: 'Premier League', country: 'England', stadium: 'Stamford Bridge', c1: '#034694', c2: '#FFFFFF', att: 84, def: 81, form: 'WDWLW', ucl: true },
+        'man-utd': { id: 'man-utd', name: 'Man United', fullName: 'Manchester United', short: 'MUN', league: 'Premier League', country: 'England', stadium: 'Old Trafford', c1: '#DA291C', c2: '#FBE122', att: 80, def: 78, form: 'WLDWW', ucl: false },
+        'tottenham': { id: 'tottenham', name: 'Tottenham', fullName: 'Tottenham Hotspur', short: 'TOT', league: 'Premier League', country: 'England', stadium: 'Tottenham Hotspur Stadium', c1: '#132257', c2: '#FFFFFF', att: 83, def: 77, form: 'LWWLD', ucl: false },
+        'newcastle': { id: 'newcastle', name: 'Newcastle', fullName: 'Newcastle United', short: 'NEW', league: 'Premier League', country: 'England', stadium: "St James' Park", c1: '#111827', c2: '#FFFFFF', att: 82, def: 81, form: 'WWDLW', ucl: true },
+        'aston-villa': { id: 'aston-villa', name: 'Aston Villa', fullName: 'Aston Villa', short: 'AVL', league: 'Premier League', country: 'England', stadium: 'Villa Park', c1: '#670E36', c2: '#95BFE5', att: 82, def: 80, form: 'DWWLW', ucl: false },
+        'brighton': { id: 'brighton', name: 'Brighton', fullName: 'Brighton', short: 'BHA', league: 'Premier League', country: 'England', stadium: 'Amex Stadium', c1: '#0057B8', c2: '#FFFFFF', att: 79, def: 76, form: 'DWLDW', ucl: false },
+        'west-ham': { id: 'west-ham', name: 'West Ham', fullName: 'West Ham United', short: 'WHU', league: 'Premier League', country: 'England', stadium: 'London Stadium', c1: '#7A263A', c2: '#1BB1E7', att: 76, def: 74, form: 'LDWLL', ucl: false },
+        'nottm-forest': { id: 'nottm-forest', name: 'Nottm Forest', fullName: 'Nottingham Forest', short: 'NFO', league: 'Premier League', country: 'England', stadium: 'City Ground', c1: '#DD0000', c2: '#FFFFFF', att: 77, def: 79, form: 'WDWLD', ucl: false },
+        'fulham': { id: 'fulham', name: 'Fulham', fullName: 'Fulham', short: 'FUL', league: 'Premier League', country: 'England', stadium: 'Craven Cottage', c1: '#111827', c2: '#E5E7EB', att: 76, def: 77, form: 'WDLWD', ucl: false },
+        'brentford': { id: 'brentford', name: 'Brentford', fullName: 'Brentford', short: 'BRE', league: 'Premier League', country: 'England', stadium: 'Gtech Community Stadium', c1: '#D20000', c2: '#FFFFFF', att: 78, def: 73, form: 'WLLDW', ucl: false },
+        'crystal-palace': { id: 'crystal-palace', name: 'Crystal Palace', fullName: 'Crystal Palace', short: 'CRY', league: 'Premier League', country: 'England', stadium: 'Selhurst Park', c1: '#1B458F', c2: '#C4122E', att: 75, def: 76, form: 'DWLDD', ucl: false },
+        'everton': { id: 'everton', name: 'Everton', fullName: 'Everton', short: 'EVE', league: 'Premier League', country: 'England', stadium: 'Hill Dickinson Stadium', c1: '#003399', c2: '#FFFFFF', att: 73, def: 76, form: 'DLLWD', ucl: false },
+        'bournemouth': { id: 'bournemouth', name: 'Bournemouth', fullName: 'AFC Bournemouth', short: 'BOU', league: 'Premier League', country: 'England', stadium: 'Vitality Stadium', c1: '#B50E12', c2: '#111827', att: 78, def: 75, form: 'WWLDD', ucl: false },
+        'wolves': { id: 'wolves', name: 'Wolves', fullName: 'Wolverhampton', short: 'WOL', league: 'Premier League', country: 'England', stadium: 'Molineux', c1: '#FDB913', c2: '#231F20', att: 74, def: 72, form: 'LLDWL', ucl: false },
+        'leeds': { id: 'leeds', name: 'Leeds Utd', fullName: 'Leeds United', short: 'LEE', league: 'Premier League', country: 'England', stadium: 'Elland Road', c1: '#1D428A', c2: '#FACC15', att: 75, def: 73, form: 'DWLWL', ucl: false },
+        'burnley': { id: 'burnley', name: 'Burnley', fullName: 'Burnley', short: 'BUR', league: 'Premier League', country: 'England', stadium: 'Turf Moor', c1: '#6C1D45', c2: '#99D6EA', att: 71, def: 74, form: 'LDLDL', ucl: false },
+        'sunderland': { id: 'sunderland', name: 'Sunderland', fullName: 'Sunderland', short: 'SUN', league: 'Premier League', country: 'England', stadium: 'Stadium of Light', c1: '#EB172B', c2: '#FFFFFF', att: 73, def: 72, form: 'WDLLD', ucl: false },
+
+        // Scottish Premiership
+        'celtic': { id: 'celtic', name: 'Celtic', fullName: 'Celtic', short: 'CEL', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Celtic Park', c1: '#018749', c2: '#FFFFFF', att: 84, def: 80, form: 'WWWWW', ucl: true },
+        'rangers': { id: 'rangers', name: 'Rangers', fullName: 'Rangers', short: 'RAN', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Ibrox Stadium', c1: '#1B458F', c2: '#FFFFFF', att: 80, def: 77, form: 'WWDLW', ucl: false },
+        'aberdeen': { id: 'aberdeen', name: 'Aberdeen', fullName: 'Aberdeen', short: 'ABE', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Pittodrie', c1: '#E2001A', c2: '#FFFFFF', att: 75, def: 73, form: 'WDWLW', ucl: false },
+        'hearts': { id: 'hearts', name: 'Hearts', fullName: 'Heart of Midlothian', short: 'HEA', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Tynecastle Park', c1: '#7A1C37', c2: '#FFFFFF', att: 74, def: 72, form: 'DWLLW', ucl: false },
+        'hibernian': { id: 'hibernian', name: 'Hibernian', fullName: 'Hibernian', short: 'HIB', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Easter Road', c1: '#007A3D', c2: '#FFFFFF', att: 73, def: 71, form: 'LWDDW', ucl: false },
+        'dundee-utd': { id: 'dundee-utd', name: 'Dundee Utd', fullName: 'Dundee United', short: 'DUN', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Tannadice Park', c1: '#F97316', c2: '#111827', att: 72, def: 71, form: 'WDLDD', ucl: false },
+        'motherwell': { id: 'motherwell', name: 'Motherwell', fullName: 'Motherwell', short: 'MOT', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Fir Park', c1: '#7C1D2F', c2: '#F59E0B', att: 71, def: 71, form: 'LWDWL', ucl: false },
+        'kilmarnock': { id: 'kilmarnock', name: 'Kilmarnock', fullName: 'Kilmarnock', short: 'KIL', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Rugby Park', c1: '#0047AB', c2: '#FFFFFF', att: 71, def: 72, form: 'DWLDL', ucl: false },
+        'st-mirren': { id: 'st-mirren', name: 'St Mirren', fullName: 'St Mirren', short: 'STM', league: 'Scottish Premiership', country: 'Scotland', stadium: 'SMiSA Stadium', c1: '#111827', c2: '#E5E7EB', att: 71, def: 72, form: 'DDWLL', ucl: false },
+        'dundee': { id: 'dundee', name: 'Dundee', fullName: 'Dundee FC', short: 'DFC', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Dens Park', c1: '#1E3A8A', c2: '#FFFFFF', att: 70, def: 69, form: 'LDWLL', ucl: false },
+        'falkirk': { id: 'falkirk', name: 'Falkirk', fullName: 'Falkirk', short: 'FAL', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Falkirk Stadium', c1: '#1D4ED8', c2: '#DC2626', att: 70, def: 70, form: 'WLLDW', ucl: false },
+        'livingston': { id: 'livingston', name: 'Livingston', fullName: 'Livingston', short: 'LIV', league: 'Scottish Premiership', country: 'Scotland', stadium: 'Almondvale', c1: '#EAB308', c2: '#111827', att: 68, def: 70, form: 'LLDDL', ucl: false },
+
+        // La Liga
+        'real-madrid': { id: 'real-madrid', name: 'Real Madrid', fullName: 'Real Madrid', short: 'RMA', league: 'La Liga', country: 'Spain', stadium: 'Santiago Bernabéu', c1: '#1E293B', c2: '#FACC15', att: 92, def: 86, form: 'WWWWL', ucl: true },
+        'barcelona': { id: 'barcelona', name: 'Barcelona', fullName: 'Barcelona', short: 'BAR', league: 'La Liga', country: 'Spain', stadium: 'Spotify Camp Nou', c1: '#A50044', c2: '#004D98', att: 91, def: 84, form: 'WWWDW', ucl: true },
+        'atletico': { id: 'atletico', name: 'Atlético', fullName: 'Atlético Madrid', short: 'ATM', league: 'La Liga', country: 'Spain', stadium: 'Metropolitano', c1: '#CB3524', c2: '#272E61', att: 84, def: 86, form: 'WWDWW', ucl: true },
+        'athletic-club': { id: 'athletic-club', name: 'Athletic Club', fullName: 'Athletic Club', short: 'ATH', league: 'La Liga', country: 'Spain', stadium: 'San Mamés', c1: '#EE2523', c2: '#FFFFFF', att: 81, def: 81, form: 'WDWWL', ucl: true },
+        'villarreal': { id: 'villarreal', name: 'Villarreal', fullName: 'Villarreal', short: 'VIL', league: 'La Liga', country: 'Spain', stadium: 'La Cerámica', c1: '#EAB308', c2: '#005187', att: 81, def: 77, form: 'WWLDW', ucl: true },
+        'real-sociedad': { id: 'real-sociedad', name: 'Real Sociedad', fullName: 'Real Sociedad', short: 'RSO', league: 'La Liga', country: 'Spain', stadium: 'Reale Arena', c1: '#0067B1', c2: '#FFFFFF', att: 78, def: 80, form: 'DWWLD', ucl: false },
+        'real-betis': { id: 'real-betis', name: 'Real Betis', fullName: 'Real Betis', short: 'BET', league: 'La Liga', country: 'Spain', stadium: 'Benito Villamarín', c1: '#0BB363', c2: '#FFFFFF', att: 79, def: 77, form: 'WLDWW', ucl: false },
+        'sevilla': { id: 'sevilla', name: 'Sevilla', fullName: 'Sevilla', short: 'SEV', league: 'La Liga', country: 'Spain', stadium: 'Sánchez-Pizjuán', c1: '#D40026', c2: '#FFFFFF', att: 76, def: 75, form: 'DLWDL', ucl: false },
+        'valencia': { id: 'valencia', name: 'Valencia', fullName: 'Valencia', short: 'VAL', league: 'La Liga', country: 'Spain', stadium: 'Mestalla', c1: '#F97316', c2: '#111827', att: 74, def: 74, form: 'LDWLD', ucl: false },
+        'girona': { id: 'girona', name: 'Girona', fullName: 'Girona', short: 'GIR', league: 'La Liga', country: 'Spain', stadium: 'Montilivi', c1: '#CD2534', c2: '#FFFFFF', att: 77, def: 74, form: 'LWDWL', ucl: false },
+        'celta-vigo': { id: 'celta-vigo', name: 'Celta Vigo', fullName: 'Celta Vigo', short: 'CEL', league: 'La Liga', country: 'Spain', stadium: 'Balaídos', c1: '#38BDF8', c2: '#D91A2A', att: 76, def: 73, form: 'WLDLD', ucl: false },
+        'osasuna': { id: 'osasuna', name: 'Osasuna', fullName: 'Osasuna', short: 'OSA', league: 'La Liga', country: 'Spain', stadium: 'El Sadar', c1: '#0A346F', c2: '#D91A21', att: 75, def: 75, form: 'DWLDW', ucl: false },
+        'mallorca': { id: 'mallorca', name: 'Mallorca', fullName: 'Mallorca', short: 'MLL', league: 'La Liga', country: 'Spain', stadium: 'Son Moix', c1: '#E20613', c2: '#111827', att: 73, def: 76, form: 'DDWLL', ucl: false },
+        'getafe': { id: 'getafe', name: 'Getafe', fullName: 'Getafe', short: 'GET', league: 'La Liga', country: 'Spain', stadium: 'Coliseum', c1: '#005999', c2: '#FFFFFF', att: 71, def: 76, form: 'DLDDL', ucl: false },
+        'rayo': { id: 'rayo', name: 'Rayo Vallecano', fullName: 'Rayo Vallecano', short: 'RAY', league: 'La Liga', country: 'Spain', stadium: 'Vallecas', c1: '#E53027', c2: '#FFFFFF', att: 74, def: 74, form: 'LDWWD', ucl: false },
+        'espanyol': { id: 'espanyol', name: 'Espanyol', fullName: 'Espanyol', short: 'ESP', league: 'La Liga', country: 'Spain', stadium: 'RCDE Stadium', c1: '#007FC8', c2: '#FFFFFF', att: 72, def: 72, form: 'LLDWL', ucl: false },
+        'alaves': { id: 'alaves', name: 'Alavés', fullName: 'Deportivo Alavés', short: 'ALA', league: 'La Liga', country: 'Spain', stadium: 'Mendizorrotza', c1: '#0057A8', c2: '#FFFFFF', att: 72, def: 73, form: 'LWLLD', ucl: false },
+        'las-palmas': { id: 'las-palmas', name: 'Las Palmas', fullName: 'Las Palmas', short: 'LPA', league: 'La Liga', country: 'Spain', stadium: 'Gran Canaria', c1: '#EAB308', c2: '#0055A4', att: 73, def: 71, form: 'WLLDL', ucl: false },
+        'levante': { id: 'levante', name: 'Levante', fullName: 'Levante', short: 'LEV', league: 'La Liga', country: 'Spain', stadium: 'Ciutat de València', c1: '#005CA9', c2: '#B5172E', att: 72, def: 71, form: 'DLLWD', ucl: false },
+        'elche': { id: 'elche', name: 'Elche', fullName: 'Elche', short: 'ELC', league: 'La Liga', country: 'Spain', stadium: 'Martínez Valero', c1: '#007A33', c2: '#FFFFFF', att: 71, def: 72, form: 'LDLLW', ucl: false },
+
+        // Serie A
+        'napoli': { id: 'napoli', name: 'Napoli', fullName: 'Napoli', short: 'NAP', league: 'Serie A', country: 'Italy', stadium: 'Stadio Maradona', c1: '#008FD5', c2: '#FFFFFF', att: 86, def: 85, form: 'WWDWW', ucl: true },
+        'inter': { id: 'inter', name: 'Inter Milan', fullName: 'Inter Milan', short: 'INT', league: 'Serie A', country: 'Italy', stadium: 'San Siro', c1: '#010E80', c2: '#111827', att: 89, def: 87, form: 'WWWWL', ucl: true },
+        'ac-milan': { id: 'ac-milan', name: 'AC Milan', fullName: 'AC Milan', short: 'ACM', league: 'Serie A', country: 'Italy', stadium: 'San Siro', c1: '#DC2626', c2: '#111827', att: 84, def: 81, form: 'WDWLW', ucl: true },
+        'juventus': { id: 'juventus', name: 'Juventus', fullName: 'Juventus', short: 'JUV', league: 'Serie A', country: 'Italy', stadium: 'Allianz Stadium', c1: '#111827', c2: '#FFFFFF', att: 83, def: 86, form: 'DWWDW', ucl: true },
+        'atalanta': { id: 'atalanta', name: 'Atalanta', fullName: 'Atalanta', short: 'ATA', league: 'Serie A', country: 'Italy', stadium: 'Gewiss Stadium', c1: '#1E71B8', c2: '#111827', att: 86, def: 80, form: 'WWWLW', ucl: true },
+        'roma': { id: 'roma', name: 'AS Roma', fullName: 'AS Roma', short: 'ROM', league: 'Serie A', country: 'Italy', stadium: 'Stadio Olimpico', c1: '#8E1F2F', c2: '#F0BC42', att: 80, def: 79, form: 'WDLWW', ucl: false },
+        'lazio': { id: 'lazio', name: 'Lazio', fullName: 'Lazio', short: 'LAZ', league: 'Serie A', country: 'Italy', stadium: 'Stadio Olimpico', c1: '#38BDF8', c2: '#FFFFFF', att: 81, def: 78, form: 'WWLDW', ucl: false },
+        'fiorentina': { id: 'fiorentina', name: 'Fiorentina', fullName: 'Fiorentina', short: 'FIO', league: 'Serie A', country: 'Italy', stadium: 'Artemio Franchi', c1: '#5B21B6', c2: '#FFFFFF', att: 79, def: 78, form: 'DWWLW', ucl: false },
+        'bologna': { id: 'bologna', name: 'Bologna', fullName: 'Bologna', short: 'BOL', league: 'Serie A', country: 'Italy', stadium: "Renato Dall'Ara", c1: '#1A2F48', c2: '#A21C26', att: 78, def: 79, form: 'DDWWL', ucl: false },
+        'torino': { id: 'torino', name: 'Torino', fullName: 'Torino', short: 'TOR', league: 'Serie A', country: 'Italy', stadium: 'Olimpico Grande Torino', c1: '#8A1E03', c2: '#FFFFFF', att: 75, def: 76, form: 'LDWDL', ucl: false },
+        'udinese': { id: 'udinese', name: 'Udinese', fullName: 'Udinese', short: 'UDI', league: 'Serie A', country: 'Italy', stadium: 'Bluenergy Stadium', c1: '#1F2937', c2: '#E5E7EB', att: 75, def: 74, form: 'WLLDW', ucl: false },
+        'como': { id: 'como', name: 'Como', fullName: 'Como', short: 'COM', league: 'Serie A', country: 'Italy', stadium: 'Giuseppe Sinigaglia', c1: '#0057A8', c2: '#FFFFFF', att: 75, def: 73, form: 'DWLDW', ucl: false },
+        'genoa': { id: 'genoa', name: 'Genoa', fullName: 'Genoa', short: 'GEN', league: 'Serie A', country: 'Italy', stadium: 'Luigi Ferraris', c1: '#991F2E', c2: '#002D5A', att: 73, def: 74, form: 'DLLWD', ucl: false },
+        'parma': { id: 'parma', name: 'Parma', fullName: 'Parma', short: 'PAR', league: 'Serie A', country: 'Italy', stadium: 'Ennio Tardini', c1: '#EAB308', c2: '#003A70', att: 74, def: 72, form: 'DLWLD', ucl: false },
+        'cagliari': { id: 'cagliari', name: 'Cagliari', fullName: 'Cagliari', short: 'CAG', league: 'Serie A', country: 'Italy', stadium: 'Unipol Domus', c1: '#A01829', c2: '#002350', att: 72, def: 73, form: 'LDLLW', ucl: false },
+        'lecce': { id: 'lecce', name: 'Lecce', fullName: 'Lecce', short: 'LEC', league: 'Serie A', country: 'Italy', stadium: 'Via del Mare', c1: '#EAB308', c2: '#D91920', att: 71, def: 72, form: 'LLDWL', ucl: false },
+        'verona': { id: 'verona', name: 'Verona', fullName: 'Hellas Verona', short: 'VER', league: 'Serie A', country: 'Italy', stadium: 'Bentegodi', c1: '#005395', c2: '#FACC15', att: 72, def: 71, form: 'WLLDL', ucl: false },
+        'sassuolo': { id: 'sassuolo', name: 'Sassuolo', fullName: 'Sassuolo', short: 'SAS', league: 'Serie A', country: 'Italy', stadium: 'Mapei Stadium', c1: '#00A752', c2: '#111827', att: 74, def: 72, form: 'DWLLD', ucl: false },
+        'pisa': { id: 'pisa', name: 'Pisa', fullName: 'Pisa', short: 'PIS', league: 'Serie A', country: 'Italy', stadium: 'Arena Garibaldi', c1: '#0055A4', c2: '#111827', att: 70, def: 72, form: 'LDLDL', ucl: false },
+        'cremonese': { id: 'cremonese', name: 'Cremonese', fullName: 'Cremonese', short: 'CRE', league: 'Serie A', country: 'Italy', stadium: 'Giovanni Zini', c1: '#64748B', c2: '#D71920', att: 70, def: 71, form: 'LLDDL', ucl: false },
+
+        // Bundesliga
+        'bayern': { id: 'bayern', name: 'Bayern Munich', fullName: 'Bayern Munich', short: 'BAY', league: 'Bundesliga', country: 'Germany', stadium: 'Allianz Arena', c1: '#DC052D', c2: '#FFFFFF', att: 92, def: 85, form: 'WWWWW', ucl: true },
+        'dortmund': { id: 'dortmund', name: 'Dortmund', fullName: 'Borussia Dortmund', short: 'BVB', league: 'Bundesliga', country: 'Germany', stadium: 'Signal Iduna Park', c1: '#EAB308', c2: '#111827', att: 85, def: 80, form: 'WWLDW', ucl: true },
+        'leverkusen': { id: 'leverkusen', name: 'Leverkusen', fullName: 'Bayer Leverkusen', short: 'B04', league: 'Bundesliga', country: 'Germany', stadium: 'BayArena', c1: '#E32221', c2: '#111827', att: 87, def: 83, form: 'WWDWW', ucl: true },
+        'rb-leipzig': { id: 'rb-leipzig', name: 'RB Leipzig', fullName: 'RB Leipzig', short: 'RBL', league: 'Bundesliga', country: 'Germany', stadium: 'Red Bull Arena', c1: '#DD0741', c2: '#FFFFFF', att: 84, def: 81, form: 'WDWWL', ucl: true },
+        'frankfurt': { id: 'frankfurt', name: 'Frankfurt', fullName: 'Eintracht Frankfurt', short: 'SGE', league: 'Bundesliga', country: 'Germany', stadium: 'Deutsche Bank Park', c1: '#E1000F', c2: '#111827', att: 83, def: 78, form: 'WWWDL', ucl: false },
+        'stuttgart': { id: 'stuttgart', name: 'Stuttgart', fullName: 'VfB Stuttgart', short: 'VFB', league: 'Bundesliga', country: 'Germany', stadium: 'MHPArena', c1: '#E32219', c2: '#FFFFFF', att: 81, def: 78, form: 'WLDWW', ucl: false },
+        'freiburg': { id: 'freiburg', name: 'Freiburg', fullName: 'SC Freiburg', short: 'SCF', league: 'Bundesliga', country: 'Germany', stadium: 'Europa-Park Stadion', c1: '#111827', c2: '#E30613', att: 78, def: 79, form: 'DWWLD', ucl: false },
+        'wolfsburg': { id: 'wolfsburg', name: 'Wolfsburg', fullName: 'VfL Wolfsburg', short: 'WOB', league: 'Bundesliga', country: 'Germany', stadium: 'Volkswagen Arena', c1: '#16A34A', c2: '#FFFFFF', att: 77, def: 75, form: 'WDLLW', ucl: false },
+        'gladbach': { id: 'gladbach', name: "M'gladbach", fullName: "Borussia M'gladbach", short: 'BMG', league: 'Bundesliga', country: 'Germany', stadium: 'Borussia-Park', c1: '#111827', c2: '#16A34A', att: 77, def: 74, form: 'LWDWL', ucl: false },
+        'werder': { id: 'werder', name: 'Werder Bremen', fullName: 'Werder Bremen', short: 'SVW', league: 'Bundesliga', country: 'Germany', stadium: 'Weserstadion', c1: '#1D9053', c2: '#FFFFFF', att: 76, def: 74, form: 'DWLDW', ucl: false },
+        'mainz': { id: 'mainz', name: 'Mainz 05', fullName: 'Mainz 05', short: 'M05', league: 'Bundesliga', country: 'Germany', stadium: 'Mewa Arena', c1: '#C3141E', c2: '#FFFFFF', att: 76, def: 76, form: 'WWDLD', ucl: false },
+        'union-berlin': { id: 'union-berlin', name: 'Union Berlin', fullName: 'Union Berlin', short: 'FCU', league: 'Bundesliga', country: 'Germany', stadium: 'Alten Försterei', c1: '#EB1923', c2: '#FACC15', att: 74, def: 76, form: 'DLWLD', ucl: false },
+        'hoffenheim': { id: 'hoffenheim', name: 'Hoffenheim', fullName: 'TSG Hoffenheim', short: 'TSG', league: 'Bundesliga', country: 'Germany', stadium: 'PreZero Arena', c1: '#1961B5', c2: '#FFFFFF', att: 76, def: 72, form: 'LWLLW', ucl: false },
+        'augsburg': { id: 'augsburg', name: 'Augsburg', fullName: 'FC Augsburg', short: 'FCA', league: 'Bundesliga', country: 'Germany', stadium: 'WWK Arena', c1: '#BA3733', c2: '#16A34A', att: 74, def: 74, form: 'DDWLL', ucl: false },
+        'st-pauli': { id: 'st-pauli', name: 'St. Pauli', fullName: 'FC St. Pauli', short: 'STP', league: 'Bundesliga', country: 'Germany', stadium: 'Millerntor', c1: '#624739', c2: '#FFFFFF', att: 72, def: 74, form: 'LDWLL', ucl: false },
+        'koln': { id: 'koln', name: '1. FC Köln', fullName: '1. FC Köln', short: 'KOE', league: 'Bundesliga', country: 'Germany', stadium: 'RheinEnergie', c1: '#ED1C24', c2: '#FFFFFF', att: 74, def: 73, form: 'WLDLD', ucl: false },
+        'hsv': { id: 'hsv', name: 'Hamburger SV', fullName: 'Hamburger SV', short: 'HSV', league: 'Bundesliga', country: 'Germany', stadium: 'Volksparkstadion', c1: '#005CA9', c2: '#FFFFFF', att: 74, def: 73, form: 'DWLWD', ucl: false },
+        'heidenheim': { id: 'heidenheim', name: 'Heidenheim', fullName: '1. FC Heidenheim', short: 'HDH', league: 'Bundesliga', country: 'Germany', stadium: 'Voith-Arena', c1: '#E30613', c2: '#003D8F', att: 72, def: 72, form: 'LLDWL', ucl: false },
+
+        // Other Major European Clubs (UCL & Europa League)
+        'psg': { id: 'psg', name: 'PSG', fullName: 'Paris Saint-Germain', short: 'PSG', league: 'Ligue 1', country: 'France', stadium: 'Parc des Princes', c1: '#004170', c2: '#DA291C', att: 90, def: 85, form: 'WWWWW', ucl: true },
+        'lyon': { id: 'lyon', name: 'Lyon', fullName: 'Olympique Lyonnais', short: 'OL', league: 'Ligue 1', country: 'France', stadium: 'Groupama Stadium', c1: '#1D4ED8', c2: '#DC2626', att: 80, def: 77, form: 'WWDLW', ucl: false },
+        'porto': { id: 'porto', name: 'FC Porto', fullName: 'FC Porto', short: 'POR', league: 'Primeira Liga', country: 'Portugal', stadium: 'Estádio do Dragão', c1: '#00428C', c2: '#FFFFFF', att: 82, def: 81, form: 'WWWDL', ucl: false },
+        'ajax': { id: 'ajax', name: 'Ajax', fullName: 'Ajax', short: 'AJA', league: 'Eredivisie', country: 'Netherlands', stadium: 'Johan Cruyff Arena', c1: '#D2122E', c2: '#FFFFFF', att: 81, def: 78, form: 'WWDWW', ucl: false },
+        'galatasaray': { id: 'galatasaray', name: 'Galatasaray', fullName: 'Galatasaray', short: 'GAL', league: 'Süper Lig', country: 'Turkey', stadium: 'RAMS Park', c1: '#B91C1C', c2: '#F59E0B', att: 82, def: 76, form: 'WWWWL', ucl: false },
+        'fenerbahce': { id: 'fenerbahce', name: 'Fenerbahçe', fullName: 'Fenerbahçe', short: 'FEN', league: 'Süper Lig', country: 'Turkey', stadium: 'Şükrü Saracoğlu', c1: '#1E3A8A', c2: '#FACC15', att: 81, def: 78, form: 'WWDWL', ucl: false },
+        'braga': { id: 'braga', name: 'SC Braga', fullName: 'SC Braga', short: 'BRA', league: 'Primeira Liga', country: 'Portugal', stadium: 'Estádio Municipal', c1: '#DC2626', c2: '#FFFFFF', att: 78, def: 76, form: 'WDWLW', ucl: false },
+        'az-alkmaar': { id: 'az-alkmaar', name: 'AZ Alkmaar', fullName: 'AZ Alkmaar', short: 'AZ', league: 'Eredivisie', country: 'Netherlands', stadium: 'AFAS Stadion', c1: '#DC2626', c2: '#FFFFFF', att: 77, def: 76, form: 'DWWLW', ucl: false },
+        'olympiacos': { id: 'olympiacos', name: 'Olympiacos', fullName: 'Olympiacos', short: 'OLY', league: 'Super League Greece', country: 'Greece', stadium: 'Karaiskakis', c1: '#DC2626', c2: '#FFFFFF', att: 78, def: 77, form: 'WWLDW', ucl: false },
+        'anderlecht': { id: 'anderlecht', name: 'Anderlecht', fullName: 'RSC Anderlecht', short: 'AND', league: 'Pro League', country: 'Belgium', stadium: 'Lotto Park', c1: '#6D28D9', c2: '#FFFFFF', att: 77, def: 75, form: 'WDWLD', ucl: false },
+
+        // National Teams (World Cup & Internationals)
+        'england': { id: 'england', name: 'England', fullName: 'England', short: 'ENG', league: 'Internationals', country: 'England', stadium: 'Wembley Stadium', c1: '#1E3A8A', c2: '#EF4444', att: 89, def: 86, form: 'WWWDW', isNational: true },
+        'scotland': { id: 'scotland', name: 'Scotland', fullName: 'Scotland', short: 'SCO', league: 'Internationals', country: 'Scotland', stadium: 'Hampden Park', c1: '#1E3A8A', c2: '#FFFFFF', att: 78, def: 79, form: 'WDWLW', isNational: true },
+        'spain': { id: 'spain', name: 'Spain', fullName: 'Spain', short: 'ESP', league: 'Internationals', country: 'Spain', stadium: 'Santiago Bernabéu', c1: '#DC2626', c2: '#FACC15', att: 92, def: 87, form: 'WWWWW', isNational: true },
+        'france': { id: 'france', name: 'France', fullName: 'France', short: 'FRA', league: 'Internationals', country: 'France', stadium: 'Stade de France', c1: '#1D4ED8', c2: '#EF4444', att: 91, def: 87, form: 'WWWDL', isNational: true },
+        'germany': { id: 'germany', name: 'Germany', fullName: 'Germany', short: 'GER', league: 'Internationals', country: 'Germany', stadium: 'Allianz Arena', c1: '#111827', c2: '#FACC15', att: 88, def: 84, form: 'WWDWW', isNational: true },
+        'italy': { id: 'italy', name: 'Italy', fullName: 'Italy', short: 'ITA', league: 'Internationals', country: 'Italy', stadium: 'San Siro', c1: '#2563EB', c2: '#FFFFFF', att: 83, def: 85, form: 'WDWWL', isNational: true },
+        'portugal': { id: 'portugal', name: 'Portugal', fullName: 'Portugal', short: 'POR', league: 'Internationals', country: 'Portugal', stadium: 'Estádio da Luz', c1: '#B91C1C', c2: '#15803D', att: 88, def: 84, form: 'WWWDW', isNational: true },
+        'netherlands': { id: 'netherlands', name: 'Netherlands', fullName: 'Netherlands', short: 'NED', league: 'Internationals', country: 'Netherlands', stadium: 'Johan Cruyff Arena', c1: '#F97316', c2: '#111827', att: 85, def: 84, form: 'DWWLW', isNational: true },
+        'argentina': { id: 'argentina', name: 'Argentina', fullName: 'Argentina', short: 'ARG', league: 'Internationals', country: 'Argentina', stadium: 'Estadio Monumental', c1: '#38BDF8', c2: '#FFFFFF', att: 91, def: 88, form: 'WWWWL', isNational: true },
+        'brazil': { id: 'brazil', name: 'Brazil', fullName: 'Brazil', short: 'BRA', league: 'Internationals', country: 'Brazil', stadium: 'Maracanã', c1: '#EAB308', c2: '#15803D', att: 88, def: 82, form: 'WDWLW', isNational: true },
+        'croatia': { id: 'croatia', name: 'Croatia', fullName: 'Croatia', short: 'CRO', league: 'Internationals', country: 'Croatia', stadium: 'Stadion Maksimir', c1: '#DC2626', c2: '#FFFFFF', att: 81, def: 82, form: 'DWLDW', isNational: true },
+        'belgium': { id: 'belgium', name: 'Belgium', fullName: 'Belgium', short: 'BEL', league: 'Internationals', country: 'Belgium', stadium: 'King Baudouin', c1: '#B91C1C', c2: '#FACC15', att: 83, def: 79, form: 'LWDWL', isNational: true },
+        'uruguay': { id: 'uruguay', name: 'Uruguay', fullName: 'Uruguay', short: 'URU', league: 'Internationals', country: 'Uruguay', stadium: 'Estadio Centenario', c1: '#38BDF8', c2: '#111827', att: 84, def: 83, form: 'WWDLD', isNational: true },
+        'colombia': { id: 'colombia', name: 'Colombia', fullName: 'Colombia', short: 'COL', league: 'Internationals', country: 'Colombia', stadium: 'Metropolitano', c1: '#EAB308', c2: '#1D4ED8', att: 84, def: 81, form: 'WWLDW', isNational: true },
+        'usa': { id: 'usa', name: 'USA', fullName: 'United States', short: 'USA', league: 'Internationals', country: 'USA', stadium: 'MetLife Stadium', c1: '#1E3A8A', c2: '#DC2626', att: 80, def: 79, form: 'WDWLD', isNational: true },
+        'mexico': { id: 'mexico', name: 'Mexico', fullName: 'Mexico', short: 'MEX', league: 'Internationals', country: 'Mexico', stadium: 'Estadio Azteca', c1: '#15803D', c2: '#DC2626', att: 79, def: 78, form: 'DWLDW', isNational: true },
+        'japan': { id: 'japan', name: 'Japan', fullName: 'Japan', short: 'JPN', league: 'Internationals', country: 'Japan', stadium: 'Saitama Stadium', c1: '#1D4ED8', c2: '#FFFFFF', att: 83, def: 80, form: 'WWWDW', isNational: true },
+        'morocco': { id: 'morocco', name: 'Morocco', fullName: 'Morocco', short: 'MAR', league: 'Internationals', country: 'Morocco', stadium: 'Stade Mohammed V', c1: '#B91C1C', c2: '#15803D', att: 81, def: 84, form: 'WWDWW', isNational: true },
+        'wales': { id: 'wales', name: 'Wales', fullName: 'Wales', short: 'WAL', league: 'Internationals', country: 'Wales', stadium: 'Cardiff City Stadium', c1: '#DC2626', c2: '#16A34A', att: 77, def: 77, form: 'DWWLD', isNational: true },
+        'ireland': { id: 'ireland', name: 'Ireland', fullName: 'Republic of Ireland', short: 'IRL', league: 'Internationals', country: 'Ireland', stadium: 'Aviva Stadium', c1: '#15803D', c2: '#FFFFFF', att: 75, def: 76, form: 'LWDDW', isNational: true },
+      };
+
+      var POPULAR_CLUB_IDS = [
+        'arsenal', 'liverpool', 'man-city', 'celtic', 'rangers',
+        'real-madrid', 'barcelona', 'bayern', 'inter', 'man-utd', 'chelsea', 'newcastle',
+      ];
+
+      function hashStr(str) {
+        var h = 2166136261;
+        for (var i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 16777619);
+        }
+        return Math.abs(h);
+      }
+
+      // Resolve known clubs or deterministically synthesize any club worldwide
+      function resolveClub(rawName) {
+        var clean = rawName.trim().replace(/\s+/g, ' ');
+        var lower = clean.toLowerCase();
+
+        var keys = Object.keys(TEAMS);
+        for (var i = 0; i < keys.length; i++) {
+          var t = TEAMS[keys[i]];
+          if (t.isNational) continue;
+          if (
+            t.name.toLowerCase() === lower ||
+            t.fullName.toLowerCase() === lower ||
+            t.short.toLowerCase() === lower ||
+            keys[i] === lower
+          ) {
+            return t;
+          }
+        }
+
+        var aliases = {
+          'man city': 'man-city', 'city': 'man-city', 'manchester city': 'man-city',
+          'man utd': 'man-utd', 'man united': 'man-utd', 'manchester united': 'man-utd',
+          'spurs': 'tottenham', 'barca': 'barcelona', 'real': 'real-madrid',
+          'inter': 'inter', 'milan': 'ac-milan', 'juve': 'juventus',
+          'bayern': 'bayern', 'bvb': 'dortmund', 'psg': 'psg', 'hearts': 'hearts', 'hibs': 'hibernian',
+        };
+        if (aliases[lower] && TEAMS[aliases[lower]]) return TEAMS[aliases[lower]];
+
+        var h = hashStr(lower);
+        var palettes = [
+          ['#059669', '#FFFFFF'], ['#0284C7', '#FFFFFF'], ['#DC2626', '#FACC15'],
+          ['#4F46E5', '#FFFFFF'], ['#EA580C', '#111827'], ['#0D9488', '#FFFFFF'],
+          ['#9333EA', '#FFFFFF'], ['#1E3A8A', '#FACC15'],
+        ];
+        var pal = palettes[h % palettes.length];
+        var titleName = clean.replace(/\b\w/g, function (ch) { return ch.toUpperCase(); });
+        var parts = titleName.split(' ');
+        var short = parts.length >= 2
+          ? (parts[0][0] + parts[1].slice(0, 2)).toUpperCase()
+          : titleName.slice(0, 3).toUpperCase();
+        var forms = ['WWDLW', 'DWWDL', 'WWLDW', 'WLDWW', 'WDWLW', 'LWWDD'];
+
+        return {
+          id: 'custom-' + lower.replace(/[^a-z0-9]+/g, '-'),
+          name: titleName,
+          fullName: titleName,
+          short: short,
+          league: 'Domestic League',
+          country: 'Club Football',
+          stadium: titleName + ' Ground',
+          c1: pal[0],
+          c2: pal[1],
+          att: 74 + (h % 12),
+          def: 72 + ((h >> 3) % 12),
+          form: forms[h % forms.length],
+          ucl: false,
+          isCustom: true,
+        };
+      }
+
+      // Crisp inline SVG shield crest
+      function crestSVG(team) {
+        var isLight = ['#FFFFFF', '#FACC15', '#EAB308', '#FDB913'].indexOf(team.c1.toUpperCase()) !== -1;
+        var txt = isLight ? '#111827' : '#FFFFFF';
+        return (
+          '<svg viewBox="0 0 32 36" class="w-6 h-6 sm:w-7 sm:h-7 shrink-0" aria-hidden="true">' +
+            '<path d="M16 1.5L29 6V17.5C29 26 23.4 31.8 16 34.5C8.6 31.8 3 26 3 17.5V6L16 1.5Z" fill="' + team.c1 + '" stroke="#CBD5E1" stroke-width="1.2" />' +
+            '<path d="M16 1.5L29 6V17.5C29 26 23.4 31.8 16 34.5V1.5Z" fill="' + team.c2 + '" fill-opacity="0.22" />' +
+            '<text x="16" y="21.5" text-anchor="middle" fill="' + txt + '" font-family="Inter, sans-serif" font-weight="800" font-size="8.5">' + team.short + '</text>' +
+          '</svg>'
+        );
+      }
+
+      function formDots(formStr) {
+        return formStr.split('').map(function (ch) {
+          var style = ch === 'W'
+            ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]'
+            : ch === 'D'
+            ? 'bg-slate-100 text-[#6B7280] border-slate-200'
+            : 'bg-rose-50 text-rose-600 border-rose-200';
+          return '<span class="inline-flex items-center justify-center w-5 h-5 rounded-md border text-[10px] font-bold ' + style + '">' + ch + '</span>';
+        }).join('');
+      }
+
+      // Poisson probability & implied decimal odds calculation (ODDS ONLY — no score predictions)
+      function poissonPMF(lambda, k) {
+        var f = 1;
+        for (var i = 2; i <= k; i++) f *= i;
+        return (Math.pow(lambda, k) * Math.exp(-lambda)) / f;
+      }
+
+      function formPoints(s) {
+        var p = 0;
+        for (var i = 0; i < s.length; i++) {
+          var ch = s[i];
+          p += ch === 'W' ? 3 : ch === 'D' ? 1 : 0;
+        }
+        return p;
+      }
+
+      function toDecimalOdds(probPct) {
+        var raw = 96 / Math.max(4, probPct); // ~4% bookmaker margin for realistic decimal odds
+        return Math.max(1.08, Math.min(25.0, raw)).toFixed(2);
+      }
+
+      function predictMatchOdds(home, away, compName) {
+        var hForm = (formPoints(home.form) - 7.5) * 0.022;
+        var aForm = (formPoints(away.form) - 7.5) * 0.022;
+        var homeEdge = compName.indexOf('World Cup') !== -1 ? 0.14 : 0.26;
+
+        var hRate = clamp(1.30 + (home.att - away.def) * 0.032 + homeEdge + hForm, 0.45, 3.05);
+        var aRate = clamp(1.06 + (away.att - home.def) * 0.032 + aForm, 0.40, 2.80);
+
+        var hWin = 0, draw = 0, aWin = 0;
+        for (var hg = 0; hg <= 6; hg++) {
+          var ph = poissonPMF(hRate, hg);
+          for (var ag = 0; ag <= 6; ag++) {
+            var p = ph * poissonPMF(aRate, ag);
+            if (hg > ag) hWin += p;
+            else if (hg === ag) draw += p;
+            else aWin += p;
+          }
+        }
+
+        var sum = hWin + draw + aWin || 1;
+        var hPct = Math.round((hWin / sum) * 100);
+        var dPct = Math.round((draw / sum) * 100);
+        var aPct = 100 - hPct - dPct;
+        if (aPct < 1) {
+          aPct = 1;
+          hPct = Math.max(1, 99 - dPct);
+        }
+
+        var hOdds = toDecimalOdds(hPct);
+        var dOdds = toDecimalOdds(dPct);
+        var aOdds = toDecimalOdds(aPct);
+
+        var insight = '';
+        if (hPct >= 56) {
+          insight = home.name + ' open as clear home favourites (' + hOdds + ') at ' + home.stadium + ' with a ' + hPct + '% win probability.';
+        } else if (aPct >= 52) {
+          insight = away.name + ' travel as ' + aOdds + ' favourites (' + aPct + '% win probability) backed by stronger recent form.';
+        } else if (Math.abs(hPct - aPct) <= 8) {
+          insight = 'Finely balanced odds (' + hOdds + ' vs ' + aOdds + ') with the draw priced at ' + dOdds + '.';
+        } else if (hPct > aPct) {
+          insight = 'Home advantage gives ' + home.name + ' a narrow edge in the market (' + hOdds + ' · ' + hPct + '%).';
+        } else {
+          insight = away.name + ' hold a slight edge on the odds (' + aOdds + ' · ' + aPct + '%), though ' + home.name + ' remain live at home.';
+        }
+
+        return { hPct: hPct, dPct: dPct, aPct: aPct, hOdds: hOdds, dOdds: dOdds, aOdds: aOdds, insight: insight };
+      }
+
+      /* ===================================================================
+         PART 3: COMPETITIONS & LEAGUES (NEXT 10 GAMES EACH)
+         =================================================================== */
+
+      var COMPETITIONS = {
+        ucl: {
+          id: 'ucl',
+          name: 'UEFA Champions League',
+          fixtures: [
+            { id: 'ucl-1', date: '2026-11-25', time: '17:45', stage: 'MD 5', home: 'inter', away: 'rb-leipzig' },
+            { id: 'ucl-2', date: '2026-11-25', time: '20:00', stage: 'MD 5', home: 'liverpool', away: 'real-madrid' },
+            { id: 'ucl-3', date: '2026-11-25', time: '20:00', stage: 'MD 5', home: 'bayern', away: 'psg' },
+            { id: 'ucl-4', date: '2026-11-25', time: '20:00', stage: 'MD 5', home: 'man-city', away: 'juventus' },
+            { id: 'ucl-5', date: '2026-11-25', time: '20:00', stage: 'MD 5', home: 'celtic', away: 'dortmund' },
+            { id: 'ucl-6', date: '2026-12-08', time: '17:45', stage: 'MD 6', home: 'napoli', away: 'chelsea' },
+            { id: 'ucl-7', date: '2026-12-08', time: '20:00', stage: 'MD 6', home: 'barcelona', away: 'arsenal' },
+            { id: 'ucl-8', date: '2026-12-08', time: '20:00', stage: 'MD 6', home: 'atletico', away: 'ac-milan' },
+            { id: 'ucl-9', date: '2026-12-09', time: '20:00', stage: 'MD 6', home: 'leverkusen', away: 'newcastle' },
+            { id: 'ucl-10', date: '2026-12-09', time: '20:00', stage: 'MD 6', home: 'psg', away: 'atalanta' },
+          ],
+        },
+        uel: {
+          id: 'uel',
+          name: 'UEFA Europa League',
+          fixtures: [
+            { id: 'uel-1', date: '2026-11-26', time: '17:45', stage: 'MD 5', home: 'lazio', away: 'porto' },
+            { id: 'uel-2', date: '2026-11-26', time: '17:45', stage: 'MD 5', home: 'galatasaray', away: 'tottenham' },
+            { id: 'uel-3', date: '2026-11-26', time: '17:45', stage: 'MD 5', home: 'az-alkmaar', away: 'fenerbahce' },
+            { id: 'uel-4', date: '2026-11-26', time: '20:00', stage: 'MD 5', home: 'man-utd', away: 'olympiacos' },
+            { id: 'uel-5', date: '2026-11-26', time: '20:00', stage: 'MD 5', home: 'rangers', away: 'lyon' },
+            { id: 'uel-6', date: '2026-11-26', time: '20:00', stage: 'MD 5', home: 'roma', away: 'braga' },
+            { id: 'uel-7', date: '2026-12-10', time: '17:45', stage: 'MD 6', home: 'ajax', away: 'real-sociedad' },
+            { id: 'uel-8', date: '2026-12-10', time: '17:45', stage: 'MD 6', home: 'frankfurt', away: 'anderlecht' },
+            { id: 'uel-9', date: '2026-12-10', time: '20:00', stage: 'MD 6', home: 'tottenham', away: 'roma' },
+            { id: 'uel-10', date: '2026-12-10', time: '20:00', stage: 'MD 6', home: 'porto', away: 'man-utd' },
+          ],
+        },
+        intl: {
+          id: 'intl',
+          name: 'World Cup & Internationals',
+          fixtures: [
+            { id: 'int-1', date: '2027-03-25', time: '19:45', stage: 'Nations League', home: 'england', away: 'france' },
+            { id: 'int-2', date: '2027-03-25', time: '19:45', stage: 'Nations League', home: 'scotland', away: 'croatia' },
+            { id: 'int-3', date: '2027-03-25', time: '19:45', stage: 'Nations League', home: 'spain', away: 'netherlands' },
+            { id: 'int-4', date: '2027-03-25', time: '19:45', stage: 'Nations League', home: 'germany', away: 'italy' },
+            { id: 'int-5', date: '2027-03-26', time: '00:30', stage: 'CONMEBOL', home: 'argentina', away: 'brazil' },
+            { id: 'int-6', date: '2027-03-26', time: '01:00', stage: 'CONMEBOL', home: 'uruguay', away: 'colombia' },
+            { id: 'int-7', date: '2027-03-26', time: '19:45', stage: 'Nations League', home: 'portugal', away: 'belgium' },
+            { id: 'int-8', date: '2027-03-26', time: '19:45', stage: 'International', home: 'wales', away: 'ireland' },
+            { id: 'int-9', date: '2027-03-27', time: '01:00', stage: 'CONCACAF', home: 'usa', away: 'mexico' },
+            { id: 'int-10', date: '2027-03-27', time: '11:00', stage: 'International', home: 'japan', away: 'morocco' },
+          ],
+        },
+        epl: {
+          id: 'epl',
+          name: 'Premier League',
+          fixtures: [
+            { id: 'epl-1', date: '2026-11-28', time: '12:30', stage: 'MW 13', home: 'newcastle', away: 'man-city' },
+            { id: 'epl-2', date: '2026-11-28', time: '15:00', stage: 'MW 13', home: 'brighton', away: 'everton' },
+            { id: 'epl-3', date: '2026-11-28', time: '15:00', stage: 'MW 13', home: 'crystal-palace', away: 'fulham' },
+            { id: 'epl-4', date: '2026-11-28', time: '15:00', stage: 'MW 13', home: 'nottm-forest', away: 'burnley' },
+            { id: 'epl-5', date: '2026-11-28', time: '15:00', stage: 'MW 13', home: 'wolves', away: 'sunderland' },
+            { id: 'epl-6', date: '2026-11-28', time: '17:30', stage: 'MW 13', home: 'west-ham', away: 'arsenal' },
+            { id: 'epl-7', date: '2026-11-29', time: '14:00', stage: 'MW 13', home: 'chelsea', away: 'aston-villa' },
+            { id: 'epl-8', date: '2026-11-29', time: '14:00', stage: 'MW 13', home: 'man-utd', away: 'bournemouth' },
+            { id: 'epl-9', date: '2026-11-29', time: '16:30', stage: 'MW 13', home: 'liverpool', away: 'tottenham' },
+            { id: 'epl-10', date: '2026-11-30', time: '20:00', stage: 'MW 13', home: 'leeds', away: 'brentford' },
+          ],
+        },
+        laliga: {
+          id: 'laliga',
+          name: 'La Liga',
+          fixtures: [
+            { id: 'lal-1', date: '2026-11-27', time: '20:00', stage: 'MD 14', home: 'mallorca', away: 'valencia' },
+            { id: 'lal-2', date: '2026-11-28', time: '13:00', stage: 'MD 14', home: 'barcelona', away: 'las-palmas' },
+            { id: 'lal-3', date: '2026-11-28', time: '15:15', stage: 'MD 14', home: 'alaves', away: 'celta-vigo' },
+            { id: 'lal-4', date: '2026-11-28', time: '17:30', stage: 'MD 14', home: 'espanyol', away: 'girona' },
+            { id: 'lal-5', date: '2026-11-28', time: '20:00', stage: 'MD 14', home: 'atletico', away: 'sevilla' },
+            { id: 'lal-6', date: '2026-11-29', time: '13:00', stage: 'MD 14', home: 'villarreal', away: 'osasuna' },
+            { id: 'lal-7', date: '2026-11-29', time: '15:15', stage: 'MD 14', home: 'real-madrid', away: 'getafe' },
+            { id: 'lal-8', date: '2026-11-29', time: '17:30', stage: 'MD 14', home: 'rayo', away: 'athletic-club' },
+            { id: 'lal-9', date: '2026-11-29', time: '20:00', stage: 'MD 14', home: 'real-sociedad', away: 'real-betis' },
+            { id: 'lal-10', date: '2026-11-30', time: '20:00', stage: 'MD 14', home: 'levante', away: 'elche' },
+          ],
+        },
+        seriea: {
+          id: 'seriea',
+          name: 'Serie A',
+          fixtures: [
+            { id: 'ser-1', date: '2026-11-27', time: '19:45', stage: 'MD 13', home: 'cagliari', away: 'verona' },
+            { id: 'ser-2', date: '2026-11-28', time: '14:00', stage: 'MD 13', home: 'como', away: 'sassuolo' },
+            { id: 'ser-3', date: '2026-11-28', time: '17:00', stage: 'MD 13', home: 'ac-milan', away: 'cremonese' },
+            { id: 'ser-4', date: '2026-11-28', time: '19:45', stage: 'MD 13', home: 'bologna', away: 'genoa' },
+            { id: 'ser-5', date: '2026-11-29', time: '11:30', stage: 'MD 13', home: 'udinese', away: 'pisa' },
+            { id: 'ser-6', date: '2026-11-29', time: '14:00', stage: 'MD 13', home: 'parma', away: 'lazio' },
+            { id: 'ser-7', date: '2026-11-29', time: '14:00', stage: 'MD 13', home: 'torino', away: 'napoli' },
+            { id: 'ser-8', date: '2026-11-29', time: '17:00', stage: 'MD 13', home: 'fiorentina', away: 'inter' },
+            { id: 'ser-9', date: '2026-11-29', time: '19:45', stage: 'MD 13', home: 'lecce', away: 'juventus' },
+            { id: 'ser-10', date: '2026-11-30', time: '19:45', stage: 'MD 13', home: 'roma', away: 'atalanta' },
+          ],
+        },
+        bundesliga: {
+          id: 'bundesliga',
+          name: 'Bundesliga',
+          fixtures: [
+            { id: 'bun-1', date: '2026-11-27', time: '19:30', stage: 'MD 12', home: 'st-pauli', away: 'hsv' },
+            { id: 'bun-2', date: '2026-11-28', time: '14:30', stage: 'MD 12', home: 'rb-leipzig', away: 'wolfsburg' },
+            { id: 'bun-3', date: '2026-11-28', time: '14:30', stage: 'MD 12', home: 'werder', away: 'stuttgart' },
+            { id: 'bun-4', date: '2026-11-28', time: '14:30', stage: 'MD 12', home: 'freiburg', away: 'gladbach' },
+            { id: 'bun-5', date: '2026-11-28', time: '14:30', stage: 'MD 12', home: 'union-berlin', away: 'leverkusen' },
+            { id: 'bun-6', date: '2026-11-28', time: '17:30', stage: 'MD 12', home: 'dortmund', away: 'bayern' },
+            { id: 'bun-7', date: '2026-11-29', time: '14:30', stage: 'MD 12', home: 'mainz', away: 'hoffenheim' },
+            { id: 'bun-8', date: '2026-11-29', time: '16:30', stage: 'MD 12', home: 'heidenheim', away: 'frankfurt' },
+            { id: 'bun-9', date: '2026-11-29', time: '18:30', stage: 'MD 12', home: 'augsburg', away: 'koln' },
+            { id: 'bun-10', date: '2026-12-04', time: '19:30', stage: 'MD 13', home: 'bayern', away: 'heidenheim' },
+          ],
+        },
+        spfl: {
+          id: 'spfl',
+          name: 'Scottish Premiership',
+          fixtures: [
+            { id: 'spl-1', date: '2026-11-28', time: '15:00', stage: 'Round 14', home: 'celtic', away: 'aberdeen' },
+            { id: 'spl-2', date: '2026-11-28', time: '15:00', stage: 'Round 14', home: 'hearts', away: 'motherwell' },
+            { id: 'spl-3', date: '2026-11-28', time: '15:00', stage: 'Round 14', home: 'kilmarnock', away: 'dundee-utd' },
+            { id: 'spl-4', date: '2026-11-28', time: '15:00', stage: 'Round 14', home: 'st-mirren', away: 'dundee' },
+            { id: 'spl-5', date: '2026-11-28', time: '15:00', stage: 'Round 14', home: 'falkirk', away: 'livingston' },
+            { id: 'spl-6', date: '2026-11-29', time: '12:00', stage: 'Round 14', home: 'hibernian', away: 'rangers' },
+            { id: 'spl-7', date: '2026-12-05', time: '15:00', stage: 'Round 15', home: 'rangers', away: 'kilmarnock' },
+            { id: 'spl-8', date: '2026-12-05', time: '15:00', stage: 'Round 15', home: 'aberdeen', away: 'hibernian' },
+            { id: 'spl-9', date: '2026-12-05', time: '15:00', stage: 'Round 15', home: 'dundee-utd', away: 'hearts' },
+            { id: 'spl-10', date: '2026-12-06', time: '15:00', stage: 'Round 15', home: 'motherwell', away: 'celtic' },
+          ],
+        },
+      };
+
+      function formatDate(iso) {
+        try {
+          var parts = iso.split('-').map(Number);
+          var dt = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+          return dt.toLocaleDateString('en-GB', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            timeZone: 'UTC',
+          });
+        } catch (e) {
+          return iso;
+        }
+      }
+
+      function addDaysISO(iso, days) {
+        var parts = iso.split('-').map(Number);
+        return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days)).toISOString().slice(0, 10);
+      }
+
+      // Deterministic Next 10 Games generator for ANY club worldwide
+      function buildClubNext10(club) {
+        var list = [];
+        var usedDates = {};
+
+        Object.keys(COMPETITIONS).forEach(function (cid) {
+          var comp = COMPETITIONS[cid];
+          comp.fixtures.forEach(function (fx) {
+            if (fx.home === club.id || fx.away === club.id) {
+              list.push({
+                id: fx.id,
+                date: fx.date,
+                time: fx.time,
+                competition: comp.name,
+                stage: fx.stage,
+                home: TEAMS[fx.home],
+                away: TEAMS[fx.away],
+              });
+              usedDates[fx.date] = true;
+            }
+          });
+        });
+
+        var clubPool = Object.keys(TEAMS)
+          .map(function (k) { return TEAMS[k]; })
+          .filter(function (t) { return !t.isNational && t.id !== club.id; });
+        var sameLeague = clubPool.filter(function (t) { return t.league === club.league; });
+        var domesticPool = sameLeague.length >= 4 ? sameLeague : clubPool;
+        var uclPool = clubPool.filter(function (t) { return t.ucl && t.country !== club.country; });
+
+        var cupNames = {
+          England: 'FA Cup / EFL Cup',
+          Scotland: 'Scottish Cup',
+          Spain: 'Copa del Rey',
+          Italy: 'Coppa Italia',
+          Germany: 'DFB-Pokal',
+          France: 'Coupe de France',
+        };
+        var cupName = cupNames[club.country] || 'Domestic Cup';
+
+        var slots = [
+          { date: '2026-11-28', time: '15:00', type: 'league', stage: 'League' },
+          { date: '2026-12-02', time: '19:45', type: 'league', stage: 'Midweek' },
+          { date: '2026-12-05', time: '15:00', type: 'league', stage: 'League' },
+          { date: '2026-12-09', time: '20:00', type: club.ucl ? 'ucl' : 'cup', stage: club.ucl ? 'UCL MD 6' : 'Cup Tie' },
+          { date: '2026-12-12', time: '15:00', type: 'league', stage: 'League' },
+          { date: '2026-12-16', time: '19:45', type: 'cup', stage: 'Cup Round' },
+          { date: '2026-12-19', time: '15:00', type: 'league', stage: 'League' },
+          { date: '2026-12-26', time: '15:00', type: 'league', stage: 'Festive' },
+          { date: '2026-12-30', time: '19:45', type: 'league', stage: 'League' },
+          { date: '2027-01-03', time: '15:00', type: 'league', stage: 'New Year' },
+          { date: '2027-01-09', time: '15:00', type: 'cup', stage: 'Cup Tie' },
+          { date: '2027-01-16', time: '15:00', type: 'league', stage: 'League' },
+          { date: '2027-01-20', time: '20:00', type: club.ucl ? 'ucl' : 'league', stage: club.ucl ? 'UCL MD 7' : 'Midweek' },
+          { date: '2027-01-23', time: '15:00', type: 'league', stage: 'League' },
+        ];
+
+        var seed = hashStr(club.id);
+        var usedOpps = {};
+        list.forEach(function (m) {
+          usedOpps[m.home.id === club.id ? m.away.id : m.home.id] = true;
+        });
+
+        var cursor = seed % domesticPool.length;
+        var uclCursor = seed % Math.max(1, uclPool.length);
+
+        for (var i = 0; i < slots.length && list.length < 10; i++) {
+          var s = slots[i];
+          if (usedDates[s.date] || usedDates[addDaysISO(s.date, -1)] || usedDates[addDaysISO(s.date, 1)]) {
+            continue;
+          }
+
+          var opp;
+          var compName = club.league;
+          if (s.type === 'ucl' && uclPool.length > 0) {
+            opp = uclPool[uclCursor % uclPool.length];
+            uclCursor += 3;
+            compName = 'UEFA Champions League';
+          } else {
+            var tries = 0;
+            do {
+              opp = domesticPool[cursor % domesticPool.length];
+              cursor += 1 + (seed % 3);
+              tries++;
+            } while (usedOpps[opp.id] && tries < domesticPool.length);
+            if (s.type === 'cup') compName = cupName;
+          }
+
+          usedOpps[opp.id] = true;
+          usedDates[s.date] = true;
+
+          var isHome = (list.length + (seed % 2)) % 2 === 0;
+          list.push({
+            id: 'club-' + club.id + '-' + s.date + '-' + opp.id,
+            date: s.date,
+            time: s.time,
+            competition: compName,
+            stage: s.stage,
+            home: isHome ? club : opp,
+            away: isHome ? opp : club,
+          });
+        }
+
+        list.sort(function (a, b) {
+          return (a.date + a.time).localeCompare(b.date + b.time);
+        });
+        return list.slice(0, 10);
+      }
+
+      /* ===================================================================
+         PART 4: SECTIONED NAVIGATION MENU & APPLICATION STATE
+         =================================================================== */
+
+      var STORAGE_KEY = 'footy_checker_picks_v3';
+
+      var NAV_SECTIONS = [
+        {
+          title: 'Club Finder',
+          items: [
+            { id: 'home', label: 'Home', icon: 'home' },
+            { id: 'my-picks', label: 'My Picks', icon: 'check', showCount: true },
+          ],
+        },
+        {
+          title: 'Major Competitions',
+          items: [
+            { id: 'comp:ucl', label: 'UEFA Champions League', icon: 'trophy' },
+            { id: 'comp:uel', label: 'UEFA Europa League', icon: 'trophy' },
+            { id: 'comp:intl', label: 'World Cup & Internationals', icon: 'globe' },
+          ],
+        },
+        {
+          title: 'Top Domestic Leagues',
+          items: [
+            { id: 'comp:epl', label: 'Premier League', icon: 'league' },
+            { id: 'comp:laliga', label: 'La Liga', icon: 'league' },
+            { id: 'comp:seriea', label: 'Serie A', icon: 'league' },
+            { id: 'comp:bundesliga', label: 'Bundesliga', icon: 'league' },
+            { id: 'comp:spfl', label: 'Scottish Premiership', icon: 'league' },
+          ],
+        },
+        {
+          title: 'Extras',
+          items: [
+            { id: 'action:replay', label: 'Replay Intro Animation', icon: 'play' },
+          ],
+        },
+      ];
+
+      function navIconSVG(name, active) {
+        var cls = 'w-4 h-4 shrink-0 ' + (active ? 'text-[#059669]' : 'text-[#6B7280]');
+        if (name === 'home') {
+          return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5.5v-6h-5v6H4a1 1 0 01-1-1v-9.5z"/></svg>';
+        }
+        if (name === 'check') {
+          return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+        }
+        if (name === 'trophy') {
+          return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8m-4-4v4m-5-9a5 5 0 0010 0V4H7v8zm-2-6H5a2 2 0 00-2 2v1a4 4 0 004 4h1m10-7h1a2 2 0 012 2v1a4 4 0 01-4 4h-1"/></svg>';
+        }
+        if (name === 'globe') {
+          return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zM3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>';
+        }
+        if (name === 'play') {
+          return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+        }
+        return '<svg class="' + cls + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>';
+      }
+
+      var state = {
+        activeRoute: 'home',
+        activeClub: TEAMS['arsenal'],
+        picks: {},
+        expandedIds: {},
+        confirmResetPicks: false,
+        desktopSidebarCollapsed: false,
+      };
+
+      function loadPicks() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') state.picks = parsed;
+          }
+        } catch (e) {
+          state.picks = {};
+        }
+      }
+
+      function savePicks() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.picks));
+        } catch (e) {
+          // Storage unavailable
+        }
+      }
+
+      var toastTimer = null;
+      function showToast(msg) {
+        var pill = document.getElementById('toast-pill');
+        var text = document.getElementById('toast-text');
+        if (!pill || !text) return;
+        text.textContent = msg;
+        pill.classList.remove('translate-y-8', 'opacity-0');
+        pill.classList.add('translate-y-0', 'opacity-100');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          pill.classList.add('translate-y-8', 'opacity-0');
+          pill.classList.remove('translate-y-0', 'opacity-100');
+        }, 2000);
+      }
+
+      /* ===================================================================
+         PART 5: UI RENDERING (MENUS, FIXTURE CARDS, HOME, MY PICKS)
+         =================================================================== */
+
+      function renderNavigationMenus() {
+        var picksCount = Object.keys(state.picks).length;
+        var html = NAV_SECTIONS.map(function (sec) {
+          var itemsHtml = sec.items.map(function (item) {
+            var isActive = state.activeRoute === item.id;
+            var rowCls = isActive
+              ? 'bg-[#ECFDF5] text-[#059669] font-bold'
+              : 'text-[#374151] hover:bg-[#F6F8FA] hover:text-[#111827] font-medium';
+            var badge = item.showCount
+              ? '<span class="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold ' +
+                (isActive ? 'bg-[#059669] text-white' : 'bg-[#F1F5F9] text-[#6B7280]') + '">' + picksCount + '</span>'
+              : '';
+            return (
+              '<button type="button" data-nav-route="' + item.id + '" ' +
+              'class="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-sm text-left transition cursor-pointer ' + rowCls + '">' +
+                navIconSVG(item.icon, isActive) +
+                '<span class="truncate">' + item.label + '</span>' +
+                badge +
+              '</button>'
+            );
+          }).join('');
+
+          return (
+            '<div>' +
+              '<div class="px-2.5 mb-1.5 text-[11px] font-bold uppercase tracking-wider text-[#9CA3AF]">' + sec.title + '</div>' +
+              '<div class="space-y-0.5">' + itemsHtml + '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        var drawerNav = document.getElementById('drawer-nav-container');
+        var desktopNav = document.getElementById('desktop-nav-container');
+        if (drawerNav) drawerNav.innerHTML = html;
+        if (desktopNav) desktopNav.innerHTML = html;
+      }
+
+      // Fixture Card: Always 0 - 0 center pill + Odds-Only prediction (probability bar + % + decimal odds)
+      function renderFixtureCard(match, clubContextId) {
+        var pred = predictMatchOdds(match.home, match.away, match.competition);
+        var savedPick = state.picks[match.id] ? state.picks[match.id].choice : null;
+        var isOpen = !!state.expandedIds[match.id];
+
+        var haBadge = '';
+        if (clubContextId) {
+          var isHome = match.home.id === clubContextId;
+          haBadge = isHome
+            ? '<span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] text-[10px] font-extrabold shrink-0">H</span>'
+            : '<span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 text-[#6B7280] border border-slate-200 text-[10px] font-extrabold shrink-0">A</span>';
+        }
+
+        var rightMetaLabel = clubContextId ? match.competition : match.stage;
+
+        function pickBtnCls(choice) {
+          return savedPick === choice
+            ? 'bg-[#059669] text-white border-[#059669] font-bold shadow-sm'
+            : 'bg-white hover:bg-[#F6F8FA] text-[#374151] border-[#E5E9F0] font-semibold';
+        }
+
+        var pickSummaryText = savedPick
+          ? 'Your pick: ' + (savedPick === 'H' ? match.home.name : savedPick === 'D' ? 'Draw' : match.away.name)
+          : 'Your pick & form';
+
+        return (
+          '<article class="fixture-card bg-white border border-[#E5E9F0] rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_2px_rgba(17,24,39,0.03)]">' +
+            '<div data-toggle-card="' + match.id + '" class="cursor-pointer select-none">' +
+              /* Top Meta Row */
+              '<div class="flex items-center justify-between gap-2 mb-3 text-xs">' +
+                '<div class="flex items-center gap-1.5 min-w-0 text-[#6B7280] font-medium">' +
+                  haBadge +
+                  '<span class="truncate">' + formatDate(match.date) + ' &bull; <strong class="text-[#111827] font-semibold">' + match.time + '</strong></span>' +
+                '</div>' +
+                '<span class="shrink-0 max-w-[44%] truncate px-2 py-0.5 rounded-md bg-[#F6F8FA] border border-[#E5E9F0] text-[11px] font-semibold text-[#6B7280]">' +
+                  rightMetaLabel +
+                '</span>' +
+              '</div>' +
+
+              /* 3-Column Match Row with 0 - 0 Center Pill */
+              '<div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:gap-3 mb-3.5">' +
+                '<div class="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0">' +
+                  '<span class="text-xs sm:text-sm font-bold text-right leading-tight break-words ' + (clubContextId === match.home.id ? 'text-[#059669]' : 'text-[#111827]') + '">' +
+                    match.home.name +
+                  '</span>' +
+                  crestSVG(match.home) +
+                '</div>' +
+
+                '<div class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#F6F8FA] border border-[#E5E9F0] text-center shrink-0">' +
+                  '<div class="text-sm sm:text-base font-extrabold tracking-tight text-[#111827] tabular-nums leading-none">0 - 0</div>' +
+                '</div>' +
+
+                '<div class="flex items-center justify-start gap-1.5 sm:gap-2 min-w-0">' +
+                  crestSVG(match.away) +
+                  '<span class="text-xs sm:text-sm font-bold text-left leading-tight break-words ' + (clubContextId === match.away.id ? 'text-[#059669]' : 'text-[#111827]') + '">' +
+                    match.away.name +
+                  '</span>' +
+                '</div>' +
+              '</div>' +
+
+              /* Odds-Only Probability Bar + Percentages + Implied Decimal Odds */
+              '<div class="space-y-1.5">' +
+                '<div class="h-1.5 w-full rounded-full bg-[#F1F5F9] overflow-hidden flex">' +
+                  '<div class="h-full bg-[#10B981]" style="width:' + pred.hPct + '%"></div>' +
+                  '<div class="h-full bg-[#CBD5E1]" style="width:' + pred.dPct + '%"></div>' +
+                  '<div class="h-full bg-[#4B5563]" style="width:' + pred.aPct + '%"></div>' +
+                '</div>' +
+                '<div class="flex items-center justify-between text-[11px] font-medium text-[#6B7280] tabular-nums gap-1">' +
+                  '<span class="truncate">Home <strong class="text-[#059669]">' + pred.hPct + '%</strong> <span class="text-[#9CA3AF]">(' + pred.hOdds + ')</span></span>' +
+                  '<span class="truncate text-center">Draw <strong class="text-[#374151]">' + pred.dPct + '%</strong> <span class="text-[#9CA3AF]">(' + pred.dOdds + ')</span></span>' +
+                  '<span class="truncate text-right">Away <strong class="text-[#111827]">' + pred.aPct + '%</strong> <span class="text-[#9CA3AF]">(' + pred.aOdds + ')</span></span>' +
+                '</div>' +
+              '</div>' +
+
+              /* Footer Expand Cue */
+              '<div class="mt-3 pt-2.5 border-t border-[#F1F5F9] flex items-center justify-between gap-2 text-xs">' +
+                '<span class="font-semibold ' + (savedPick ? 'text-[#059669]' : 'text-[#6B7280]') + ' truncate">' + pickSummaryText + '</span>' +
+                '<svg class="w-4 h-4 text-[#9CA3AF] shrink-0 transition-transform ' + (isOpen ? 'rotate-180' : '') + '" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">' +
+                  '<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />' +
+                '</svg>' +
+              '</div>' +
+            '</div>' +
+
+            /* Expandable Details: Pick Buttons + 5-Match Form Dots + Odds Insight */
+            '<div class="' + (isOpen ? 'block' : 'hidden') + ' mt-3 pt-3 border-t border-[#E5E9F0] space-y-3 animate-expand">' +
+              '<div class="grid grid-cols-3 gap-2">' +
+                '<button type="button" data-pick-choice="H" data-fixture-id="' + match.id + '" data-home="' + match.home.name + '" data-away="' + match.away.name + '" data-date="' + match.date + '" data-comp="' + match.competition + '" class="py-2.5 px-2 rounded-xl border text-xs transition active:scale-95 cursor-pointer truncate ' + pickBtnCls('H') + '">' +
+                  match.home.short + ' ' + pred.hOdds +
+                '</button>' +
+                '<button type="button" data-pick-choice="D" data-fixture-id="' + match.id + '" data-home="' + match.home.name + '" data-away="' + match.away.name + '" data-date="' + match.date + '" data-comp="' + match.competition + '" class="py-2.5 px-2 rounded-xl border text-xs transition active:scale-95 cursor-pointer truncate ' + pickBtnCls('D') + '">' +
+                  'Draw ' + pred.dOdds +
+                '</button>' +
+                '<button type="button" data-pick-choice="A" data-fixture-id="' + match.id + '" data-home="' + match.home.name + '" data-away="' + match.away.name + '" data-date="' + match.date + '" data-comp="' + match.competition + '" class="py-2.5 px-2 rounded-xl border text-xs transition active:scale-95 cursor-pointer truncate ' + pickBtnCls('A') + '">' +
+                  match.away.short + ' ' + pred.aOdds +
+                '</button>' +
+              '</div>' +
+
+              '<div class="flex flex-wrap items-center justify-between gap-2 text-xs">' +
+                '<div class="flex items-center gap-1.5">' +
+                  '<span class="text-[#6B7280] font-semibold">' + match.home.short + '</span>' +
+                  '<div class="flex items-center gap-0.5">' + formDots(match.home.form) + '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-1.5">' +
+                  '<div class="flex items-center gap-0.5">' + formDots(match.away.form) + '</div>' +
+                  '<span class="text-[#6B7280] font-semibold">' + match.away.short + '</span>' +
+                '</div>' +
+              '</div>' +
+
+              '<p class="text-xs text-[#6B7280] bg-[#F6F8FA] rounded-xl px-3 py-2.5 leading-relaxed">' + pred.insight + '</p>' +
+            '</div>' +
+          '</article>'
+        );
+      }
+
+      function renderQuickClubChips() {
+        var container = document.getElementById('quick-club-chips');
+        if (!container) return;
+        container.innerHTML = POPULAR_CLUB_IDS.map(function (id) {
+          var c = TEAMS[id];
+          var active = state.activeClub.id === c.id;
+          return (
+            '<button type="button" data-quick-club="' + c.id + '" ' +
+            'class="shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ' +
+            (active
+              ? 'bg-[#ECFDF5] text-[#059669] border-[#059669]'
+              : 'bg-[#F6F8FA] hover:bg-slate-100 text-[#374151] border-[#E5E9F0]') + '">' +
+              c.name +
+            '</button>'
+          );
+        }).join('');
+      }
+
+      function renderMyPicksView() {
+        var entries = Object.keys(state.picks)
+          .map(function (k) { return [k, state.picks[k]]; })
+          .sort(function (a, b) { return a[1].date.localeCompare(b[1].date); });
+
+        var listEl = document.getElementById('content-list');
+        if (!listEl) return;
+
+        if (entries.length === 0) {
+          listEl.innerHTML =
+            '<div class="bg-white border border-[#E5E9F0] rounded-2xl p-8 text-center space-y-2">' +
+              '<div class="w-11 h-11 mx-auto rounded-full bg-[#ECFDF5] text-[#059669] flex items-center justify-center">' +
+                '<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+                  '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />' +
+                '</svg>' +
+              '</div>' +
+              '<h2 class="text-base font-bold text-[#111827]">No picks saved yet</h2>' +
+              '<p class="text-xs sm:text-sm text-[#6B7280] max-w-sm mx-auto">Tap any fixture card to select Home Win, Draw, or Away Win and track your predictions here.</p>' +
+            '</div>';
+          return;
+        }
+
+        var resetControls = state.confirmResetPicks
+          ? '<div class="flex items-center gap-2">' +
+              '<span class="text-xs font-semibold text-[#6B7280]">Clear all?</span>' +
+              '<button type="button" id="confirm-reset-yes" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer">Clear</button>' +
+              '<button type="button" id="confirm-reset-no" class="px-3 py-1.5 rounded-lg bg-[#F1F5F9] hover:bg-slate-200 text-[#374151] text-xs font-semibold cursor-pointer">Cancel</button>' +
+            '</div>'
+          : '<button type="button" id="trigger-reset-picks" class="text-xs font-semibold text-rose-600 hover:text-rose-700 px-2.5 py-1 rounded-lg hover:bg-rose-50 transition cursor-pointer">Reset All</button>';
+
+        listEl.innerHTML =
+          '<div class="flex items-center justify-between gap-2 px-1">' +
+            '<span class="text-xs font-medium text-[#6B7280]">' + entries.length + ' saved prediction' + (entries.length === 1 ? '' : 's') + '</span>' +
+            resetControls +
+          '</div>' +
+          entries.map(function (entry) {
+            var fid = entry[0];
+            var p = entry[1];
+            return (
+              '<div class="bg-white border border-[#E5E9F0] rounded-2xl p-4 flex items-center justify-between gap-3">' +
+                '<div class="min-w-0">' +
+                  '<div class="text-[11px] font-semibold text-[#6B7280] truncate">' + p.competition + ' &bull; ' + formatDate(p.date) + '</div>' +
+                  '<div class="text-sm font-bold text-[#111827] truncate mt-0.5">' + p.homeName + ' vs ' + p.awayName + '</div>' +
+                  '<div class="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full bg-[#ECFDF5] border border-[#D1FAE5] text-xs font-bold text-[#059669]">Pick: ' + p.label + '</div>' +
+                '</div>' +
+                '<button type="button" data-delete-pick="' + fid + '" class="w-9 h-9 rounded-xl hover:bg-rose-50 text-[#9CA3AF] hover:text-rose-600 flex items-center justify-center transition shrink-0 cursor-pointer" aria-label="Remove pick">' +
+                  '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>' +
+                '</button>' +
+              '</div>'
+            );
+          }).join('');
+      }
+
+      function renderApp() {
+        renderNavigationMenus();
+
+        var searchCardEl = document.getElementById('home-search-card');
+        var labelEl = document.getElementById('inline-section-label');
+        var metaEl = document.getElementById('inline-section-meta');
+        var listEl = document.getElementById('content-list');
+        if (!searchCardEl || !labelEl || !metaEl || !listEl) return;
+
+        if (state.activeRoute === 'home') {
+          var club = state.activeClub;
+          searchCardEl.classList.remove('hidden');
+          renderQuickClubChips();
+
+          labelEl.textContent = club.name + ' \u00B7 Next 10 Games';
+          metaEl.textContent = 'GMT';
+
+          var clubMatches = buildClubNext10(club);
+          listEl.innerHTML = clubMatches.map(function (m) {
+            return renderFixtureCard(m, club.id);
+          }).join('');
+        } else if (state.activeRoute === 'my-picks') {
+          searchCardEl.classList.add('hidden');
+          var count = Object.keys(state.picks).length;
+
+          labelEl.textContent = 'My Picks';
+          metaEl.textContent = count + ' saved';
+
+          renderMyPicksView();
+        } else if (state.activeRoute.indexOf('comp:') === 0) {
+          searchCardEl.classList.add('hidden');
+          var compId = state.activeRoute.slice(5);
+          var comp = COMPETITIONS[compId] || COMPETITIONS.ucl;
+
+          labelEl.textContent = comp.name;
+          metaEl.textContent = 'Next 10 \u00B7 GMT';
+
+          var compMatches = comp.fixtures.map(function (fx) {
+            return {
+              id: fx.id,
+              date: fx.date,
+              time: fx.time,
+              competition: comp.name,
+              stage: fx.stage,
+              home: TEAMS[fx.home],
+              away: TEAMS[fx.away],
+            };
+          });
+          listEl.innerHTML = compMatches.map(function (m) {
+            return renderFixtureCard(m, null);
+          }).join('');
+        }
+      }
+
+      /* ===================================================================
+         PART 6: MENU DRAWER, CLUB SEARCH & INTERACTIVE EVENT HANDLERS
+         =================================================================== */
+
+      function bindUIEvents() {
+        var drawerEl = document.getElementById('mobile-drawer');
+        var backdropEl = document.getElementById('drawer-backdrop');
+        var openMenuBtn = document.getElementById('open-menu-btn');
+        var closeMenuBtn = document.getElementById('close-menu-btn');
+        var desktopSidebarEl = document.getElementById('desktop-sidebar');
+        var appGridEl = document.getElementById('app-grid');
+
+        function openDrawer() {
+          if (!drawerEl || !backdropEl) return;
+          drawerEl.classList.remove('drawer-closed');
+          backdropEl.classList.remove('drawer-closed');
+          if (openMenuBtn) openMenuBtn.setAttribute('aria-expanded', 'true');
+          document.body.style.overflow = 'hidden';
+        }
+
+        function closeDrawer() {
+          if (!drawerEl || !backdropEl) return;
+          drawerEl.classList.add('drawer-closed');
+          backdropEl.classList.add('drawer-closed');
+          if (openMenuBtn) openMenuBtn.setAttribute('aria-expanded', 'false');
+          document.body.style.overflow = '';
+        }
+
+        if (openMenuBtn) {
+          openMenuBtn.addEventListener('click', function () {
+            if (window.innerWidth >= 1024 && desktopSidebarEl && appGridEl) {
+              state.desktopSidebarCollapsed = !state.desktopSidebarCollapsed;
+              if (state.desktopSidebarCollapsed) {
+                desktopSidebarEl.classList.remove('lg:block');
+                appGridEl.classList.remove('lg:grid', 'lg:grid-cols-[252px_minmax(0,1fr)]');
+              } else {
+                desktopSidebarEl.classList.add('lg:block');
+                appGridEl.classList.add('lg:grid', 'lg:grid-cols-[252px_minmax(0,1fr)]');
+              }
+            } else {
+              openDrawer();
+            }
+          });
+        }
+
+        if (closeMenuBtn) closeMenuBtn.addEventListener('click', closeDrawer);
+        if (backdropEl) backdropEl.addEventListener('click', closeDrawer);
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') closeDrawer();
+        });
+
+        // Club Search & Autocomplete
+        var searchForm = document.getElementById('club-search-form');
+        var searchInput = document.getElementById('club-search-input');
+        var clearSearchBtn = document.getElementById('clear-search-btn');
+        var suggestionsBox = document.getElementById('club-suggestions');
+
+        function updateSuggestions(rawQuery) {
+          if (!suggestionsBox || !clearSearchBtn) return;
+          var q = rawQuery.trim().toLowerCase();
+          if (!q) {
+            suggestionsBox.classList.add('hidden');
+            clearSearchBtn.classList.add('hidden');
+            return;
+          }
+          clearSearchBtn.classList.remove('hidden');
+
+          var hits = Object.keys(TEAMS)
+            .map(function (k) { return TEAMS[k]; })
+            .filter(function (t) {
+              return !t.isNational && (
+                t.name.toLowerCase().indexOf(q) !== -1 ||
+                t.fullName.toLowerCase().indexOf(q) !== -1 ||
+                t.short.toLowerCase().indexOf(q) !== -1
+              );
+            })
+            .slice(0, 6);
+
+          var html = hits.map(function (c) {
+            return (
+              '<button type="button" data-suggest-id="' + c.id + '" ' +
+              'class="w-full px-3.5 py-2.5 flex items-center justify-between gap-2 hover:bg-[#F6F8FA] text-left border-b border-[#F1F5F9] last:border-b-0 cursor-pointer">' +
+                '<div class="flex items-center gap-2.5 min-w-0">' +
+                  crestSVG(c) +
+                  '<div class="min-w-0">' +
+                    '<div class="text-sm font-bold text-[#111827] truncate">' + c.fullName + '</div>' +
+                    '<div class="text-[11px] text-[#6B7280] truncate">' + c.league + '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<span class="text-xs font-semibold text-[#059669] shrink-0">Next 10</span>' +
+              '</button>'
+            );
+          }).join('');
+
+          var hasExact = hits.some(function (c) {
+            return c.name.toLowerCase() === q || c.fullName.toLowerCase() === q;
+          });
+          if (!hasExact) {
+            var safe = rawQuery.trim().replace(/[<>&"]/g, '');
+            html +=
+              '<button type="button" data-suggest-custom="' + safe + '" ' +
+              'class="w-full px-3.5 py-3 flex items-center justify-between gap-2 bg-[#ECFDF5] hover:bg-[#D1FAE5]/70 text-left cursor-pointer">' +
+                '<span class="text-xs sm:text-sm font-bold text-[#059669] truncate">Next 10 games for &ldquo;' + safe + '&rdquo;</span>' +
+                '<span class="text-xs font-extrabold text-[#059669] shrink-0">&rarr;</span>' +
+              '</button>';
+          }
+
+          suggestionsBox.innerHTML = html;
+          suggestionsBox.classList.remove('hidden');
+        }
+
+        if (searchInput) {
+          searchInput.addEventListener('input', function (e) {
+            updateSuggestions(e.target.value);
+          });
+        }
+
+        if (clearSearchBtn && searchInput && suggestionsBox) {
+          clearSearchBtn.addEventListener('click', function () {
+            searchInput.value = '';
+            suggestionsBox.classList.add('hidden');
+            clearSearchBtn.classList.add('hidden');
+            searchInput.focus();
+          });
+        }
+
+        if (searchForm && searchInput && suggestionsBox) {
+          searchForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var q = searchInput.value.trim();
+            if (!q) return;
+            state.activeClub = resolveClub(q);
+            suggestionsBox.classList.add('hidden');
+            renderApp();
+            showToast('Loaded ' + state.activeClub.fullName);
+          });
+
+          document.addEventListener('click', function (e) {
+            if (!searchForm.contains(e.target)) {
+              suggestionsBox.classList.add('hidden');
+            }
+          });
+        }
+
+        // Delegated Click Handlers
+        document.body.addEventListener('click', function (e) {
+          var navBtn = e.target.closest('[data-nav-route]');
+          if (navBtn) {
+            var route = navBtn.getAttribute('data-nav-route');
+            closeDrawer();
+            if (route === 'action:replay') {
+              startIntro();
+              return;
+            }
+            state.activeRoute = route;
+            state.confirmResetPicks = false;
+            renderApp();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+
+          var sugId = e.target.closest('[data-suggest-id]');
+          if (sugId) {
+            var cid = sugId.getAttribute('data-suggest-id');
+            if (TEAMS[cid]) {
+              state.activeClub = TEAMS[cid];
+              if (searchInput) searchInput.value = TEAMS[cid].fullName;
+              if (suggestionsBox) suggestionsBox.classList.add('hidden');
+              renderApp();
+            }
+            return;
+          }
+
+          var sugCustom = e.target.closest('[data-suggest-custom]');
+          if (sugCustom) {
+            var name = sugCustom.getAttribute('data-suggest-custom');
+            state.activeClub = resolveClub(name);
+            if (searchInput) searchInput.value = state.activeClub.fullName;
+            if (suggestionsBox) suggestionsBox.classList.add('hidden');
+            renderApp();
+            showToast('Loaded ' + state.activeClub.fullName);
+            return;
+          }
+
+          var chip = e.target.closest('[data-quick-club]');
+          if (chip) {
+            var qid = chip.getAttribute('data-quick-club');
+            if (TEAMS[qid]) {
+              state.activeClub = TEAMS[qid];
+              if (searchInput) searchInput.value = '';
+              if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+              renderApp();
+            }
+            return;
+          }
+
+          var pickBtn = e.target.closest('[data-pick-choice]');
+          if (pickBtn) {
+            var fid = pickBtn.getAttribute('data-fixture-id');
+            var choice = pickBtn.getAttribute('data-pick-choice');
+            var homeName = pickBtn.getAttribute('data-home');
+            var awayName = pickBtn.getAttribute('data-away');
+            var date = pickBtn.getAttribute('data-date');
+            var competition = pickBtn.getAttribute('data-comp');
+
+            if (state.picks[fid] && state.picks[fid].choice === choice) {
+              delete state.picks[fid];
+              showToast('Pick removed');
+            } else {
+              var label = choice === 'H' ? homeName + ' Win' : choice === 'D' ? 'Draw' : awayName + ' Win';
+              state.picks[fid] = { choice: choice, label: label, homeName: homeName, awayName: awayName, date: date, competition: competition };
+              showToast('Saved: ' + label);
+            }
+            savePicks();
+            renderApp();
+            return;
+          }
+
+          var cardToggle = e.target.closest('[data-toggle-card]');
+          if (cardToggle) {
+            var tid = cardToggle.getAttribute('data-toggle-card');
+            if (state.expandedIds[tid]) delete state.expandedIds[tid];
+            else state.expandedIds[tid] = true;
+            renderApp();
+            return;
+          }
+
+          var delPick = e.target.closest('[data-delete-pick]');
+          if (delPick) {
+            var did = delPick.getAttribute('data-delete-pick');
+            delete state.picks[did];
+            savePicks();
+            renderApp();
+            showToast('Pick removed');
+            return;
+          }
+
+          if (e.target.closest('#trigger-reset-picks')) {
+            state.confirmResetPicks = true;
+            renderApp();
+            return;
+          }
+          if (e.target.closest('#confirm-reset-no')) {
+            state.confirmResetPicks = false;
+            renderApp();
+            return;
+          }
+          if (e.target.closest('#confirm-reset-yes')) {
+            state.picks = {};
+            state.confirmResetPicks = false;
+            savePicks();
+            renderApp();
+            showToast('All picks cleared');
+          }
+        });
+      }
+
+      /* ===================================================================
+         PART 7: IMMEDIATE / DOMCONTENTLOADED BOOTSTRAP
+         =================================================================== */
+
+      function initApp() {
+        loadPicks();
+        bindUIEvents();
+        renderApp();
+        startIntro();
+      }
+
+      if (document.readyState !== 'loading') {
+        initApp();
+      } else {
+        document.addEventListener('DOMContentLoaded', initApp);
+      }
+    })();
+  </script>
+</body>
+</html>
